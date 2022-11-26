@@ -1,0 +1,23 @@
+---
+title: "Methodology"
+author: "Kristoff Dudek"
+date: "2022-11-26"
+output: html_document
+---
+*This document is a record of my thought processes and work path I have chosen for my analysis. For the stakeholder version of the report please see MM_ETF_Report*
+
+# Introduction
+The mine goal of this work is an automation of all weekly tasks associated with managing my investment portfolio. 
+
+## Setting Up The Environment
+
+I am going to use two packages:
+* Quantmod
+* Tidyverse
+My ETFs' data are from Yahoo Finance and that is already included in Quantmod.
+```{r}
+install.packages("quantmod")
+install.packages("tidyverse")
+library(quantmod)
+library(tidyverse)
+```
