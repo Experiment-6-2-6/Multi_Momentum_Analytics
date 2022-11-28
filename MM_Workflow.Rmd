@@ -10,7 +10,8 @@ output: html_document
 The mine goal of this work is an automation of all weekly tasks associated with managing my investment portfolio.
 
 # Assumptions and goals
-* All data should be pulled from public, free sources
+* All data should be pulled from public, free sources.
+* All the ETFs are listed in GBX (British Pennies - standard on London Stock Exchange)
 * The report should be in a form of summary of the situation and recommendation (in PDF format)
 * I want to see one year of weekly momentum in the report.
 * Additionally, I need the weekly ETF momentum calculations added every week to my Google Sheets.
@@ -23,13 +24,31 @@ The mine goal of this work is an automation of all weekly tasks associated with 
 
 ## Setting Up The Environment
 
-I am using two packages:
-* Quantmod
-* Tidyverse
+I am using three packages:
+* Quantmod for quantitative analyse
+* Tidyverse for general data manipulation
+* DBI for working with databases
+At the moment, for the simplicity, I am going to work with a virtual DB (in memory only) and because my current employer uses SQLite I ma going to practice it here.
 
 ```{r}
 install.packages("quantmod")
 install.packages("tidyverse")
+install.packages("RSQLite")
 library(quantmod)
 library(tidyverse)
+library(dplyr)
+library(RSQLite)
+#library(DBI) probably in RSQLite
+```
+Preparing an auxiliary data frame
+```{r}
+ticker <- read_csv("ETFs.csv", col_names = FALSE, show_col_types = FALSE)  %>% as.character()
+inYahoo <- paste0(ETF_names, ".L")
+momentum <- numeric(length(tickers))
+df <- data.frame(ticker, inYahoo, momentum)
+```
+Preparing the SQL database
+```{r}
+connection <- dbConnect(RSQLite::SQLite(), ":memory:")
+getSymbols(inYahoo, from = Sys.Date() - 800) #working here
 ```
