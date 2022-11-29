@@ -7,20 +7,20 @@ output: html_document
 *This document is a record of my thought processes and work path I have chosen for my analysis. For the stakeholder version of the report please see MM_ETF_Report*
 
 # Introduction
-The mine goal of this work is an automation of all weekly tasks associated with managing my investment portfolio.
+The main goal of this work is an automation of all weekly tasks associated with managing my investment portfolio and simultanously show my abilities to potential employers.
 
 # Assumptions and goals
 * All data should be pulled from public, free sources.
 * All the ETFs are listed in GBX (British Pennies - standard on London Stock Exchange)
-* The report should be in a form of summary of the situation and recommendation (in PDF format)
-* I want to see one year of weekly momentum in the report.
+* The report should be in PDF format but with option for HTML too.
+* There should be a kind of summary of situation and recommendation based on the analisys.
+* In the PDF version  should be only 3 top momentum ETFs with global bonds and physical gold (5 in total).
+* In HTML I would like to have an additional dynamic chart for the last year of calculated momentum leaders for HTML format.
 * Additionally, I need the weekly ETF momentum calculations added every week to my Google Sheets.
 * For obvious security reason I can't publish my Google credential here so the outcomes will be stored in my local SQL database.
-* There is no data for SGLN ETF available on Yahoo Finance I need some substitute for it.
-* In the final report should be only 3 top momentum ETFs with global bonds and phisical gold (5 in total)
+* There is no data for SGLN ETF available on Yahoo Finance hence I need some robust substitute for it.
 * The top one is recommended but not if a failsafe rule is triggered.
 * As the failsafe rule I am going to use 30 weeks Exponential Moving Average EMA(30). Asset under it can not be recommended and if all are in negative then going to cash should be advised.
-
 
 ## Setting Up The Environment
 
@@ -28,17 +28,17 @@ I am using three packages:
 * Quantmod for quantitative analyse
 * Tidyverse for general data manipulation
 * DBI for working with databases
-At the moment, for the simplicity, I am going to work with a virtual DB (in memory only) and because my current employer uses SQLite I ma going to practice it here.
+
+At the moment, for the simplicity, I am going to work with a virtual DB (in memory only).
 
 ```{r}
 install.packages("quantmod")
 install.packages("tidyverse")
-install.packages("RSQLite")
+install.packages("RPostgreSQL")
 library(quantmod)
 library(tidyverse)
 library(dplyr)
-library(RSQLite)
-#library(DBI) probably in RSQLite
+library(RPostgreSQL)
 ```
 Preparing an data frame for final report table and an auxiliary data frame for raw data:
 * Reading list of ETF names from CSV file
@@ -50,6 +50,7 @@ ft_df <- data.frame(matrix(ncol = length(tickers), nrow = 0)) # ft_df final tabl
 names(ft_df) <- tickers
 rd_df <- data.frame(matrix(ncol = length(tickers), nrow = 0)) # rd_df raw data data frame 
 names(rd_df) <- tickers
+dbWriteTable(connection, "CleanedRawData", rd_df)
 ```
 Preparing the SQL database:
 * establishing the connection
@@ -60,7 +61,7 @@ Preparing the SQL database:
   + dropping all columns except adjusted price
 * dropping any rows with NA
 ```{r}
-connection <- dbConnect(RSQLite::SQLite(), ":memory:")
+connection <- dbConnect(PostgreSQL, ":memory:")
 starting_date = Sys.Date() - (3 * 365)
 for (ticker in tickers)
 {
