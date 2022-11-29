@@ -40,15 +40,34 @@ library(dplyr)
 library(RSQLite)
 #library(DBI) probably in RSQLite
 ```
-Preparing an auxiliary data frame
+Preparing an data frame for final report table and an auxiliary data frame for raw data:
+* Reading list of ETF names from CSV file
+* creating empty data frame with as many collumns as are ETFs
+* Naming the columns with ETF tickers
 ```{r}
-ticker <- read_csv("ETFs.csv", col_names = FALSE, show_col_types = FALSE)  %>% as.character()
-inYahoo <- paste0(ETF_names, ".L")
-momentum <- numeric(length(tickers))
-df <- data.frame(ticker, inYahoo, momentum)
+tickers <- read_csv("ETFs.csv", col_names = FALSE, show_col_types = FALSE)  %>% as.character() # list of ETFs' tickers
+ft_df <- data.frame(matrix(ncol = length(tickers), nrow = 0)) # ft_df final table data frame 
+names(ft_df) <- tickers
+rd_df <- data.frame(matrix(ncol = length(tickers), nrow = 0)) # rd_df raw data data frame 
+names(rd_df) <- tickers
 ```
-Preparing the SQL database
+Preparing the SQL database:
+* establishing the connection
+* limiting data pull to the last 3 years
+* populating the auxiliary data frame:
+  + looping using ETF list
+  + getting data from Yahoo Finance
+  + dropping all columns except adjusted price
+* dropping any rows with NA
 ```{r}
 connection <- dbConnect(RSQLite::SQLite(), ":memory:")
-getSymbols(inYahoo, from = Sys.Date() - 800) #working here
+starting_date = Sys.Date() - (3 * 365)
+for (ticker in tickers)
+{
+  rd_df[ticker] <- 
+    getSymbols(ticker, from = starting_date, auto.apply = FALSE) %>% 
+    ad()
+}
+rd_df <- na.omit(rd_df)
 ```
+If there is NA in any ETF's data I decided to drop whole row in df because I need the ETFs' momentum in relation to each other. That means it doesn't matter much if sometimes I have longer period for comparison as long as the period is exactly same for all the ETFs.
