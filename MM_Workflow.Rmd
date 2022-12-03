@@ -4,90 +4,113 @@ author: "Kristoff Dudek"
 date: "2022-11-26"
 output: html_document
 ---
-*This document is a record of my thought processes and work path I have chosen for my analysis. For the stakeholder version of the report please see MM_ETF_Report*
+*This document is a record of my thought processes and work path I have chosen for my analysis and is addressed to my future clients/employers.*
 
 # Introduction
-The main goal of this work is an automation of all weekly tasks associated with managing my investment portfolio and simultanously show my abilities to potential employers.
+The main idea of this work was an automation of all my analytical tasks associated with managing my investment portfolio every week.
+Simultaneously, I didn't want to waste such a good piece of analytical work and I decided to use it to show my abilities to potential clients / employers.
+To suit this goal, this document became extremely verbose and now looks more like a tutorial than an analysis.
+For this same reason I use external databases. There is no real need to do so to produce a comprehensive report but the use of databases allows me to show my SQL skills and simultaneously it creates data sources for Tableau and MS Power BI presentations (the obvious next show of skills).
+You can see the presentations at the addresses:
+* Tableau dashboard: 
+* MS Power BI:
+If you are not interested in my thought process and workflow and want to see the practical version of this work please see the MM_1Year.Rmd file (It is in this repository and it is the file I actually use for my assessment of the situation).
+So if we finished the introduction, let's go to...
 
 # Assumptions and goals
 * All data should be pulled from public, free sources.
+* The analysis will be performed at weekends only.
 * I am interested in weekly data only.
 * All the ETFs are listed in GBX (British Pennies - standard on London Stock Exchange)
 * The report should be in PDF format but with option for HTML too.
-* There should be a kind of summary of situation and recommendation based on the analisys.
-* In the PDF version  should be only 3 top momentum ETFs with global bonds and physical gold (5 in total).
-* In HTML I would like to have an additional dynamic chart for the last year of calculated momentum leaders for HTML format.
+* There should be a kind of summary of situation and recommendation based on the analisys in the PDF version of the report .
+* In the summary should be only 3 top momentum ETFs with global bonds and physical gold (5 positions in total).
+* In HTML I would like to have an kind of dynamic leaderboard for the last year of calculated momentum.
 * Additionally, I need the weekly ETF momentum calculations added every week to my Google Sheets.
-* For obvious security reason I can't publish my Google credential here so the outcomes will be stored in my local SQL database.
 * There is no data for SGLN ETF available on Yahoo Finance hence I need some robust substitute for it.
-* The top one is recommended but not if a failsafe rule is triggered.
-* As the failsafe rule I am going to use 30 weeks Exponential Moving Average EMA(30). Asset under it can not be recommended and if all are in negative then going to cash should be advised.
+* As the failsafe rule I am using 30 weeks Exponential Moving Average EMA(30). Any asset under it can not be recommended and if all are negative then going to cash should be advised.
 
 ## Setting Up The Environment
-
 I am using three packages:
 * Quantmod for quantitative analyse
 * Tidyverse for general data manipulation
-* DBI for working with databases
-
-At the moment, for the simplicity, I am going to work with a virtual DB (in memory only).
+* RPostgreSQL for working with databases
+If you need to instal the packages please uncoment the first 3 lines.
 
 ```{r}
-install.packages("quantmod")
-install.packages("tidyverse")
-install.packages("RPostgreSQL")
+# install.packages("quantmod")
+# install.packages("tidyverse")
+# install.packages("RPostgreSQL")
+
 library(quantmod)
 library(tidyverse)
 library(dplyr)
 library(RPostgreSQL)
 ```
-Preparing an data frame for final report table and an auxiliary data frame for raw data:
+
+## Data cleaning and preparing the databases:
 * Reading list of ETF names from CSV file
-* creating empty data frame with as many collumns as are ETFs
-* Naming the columns with ETF tickers
-```{r}
-tickers <- read_csv("ETFs.csv", col_names = FALSE, show_col_types = FALSE)  %>% as.character() # list of ETFs' tickers
-final_df <- data.frame(matrix(ncol = length(tickers), nrow = 0))
-names(final_df) <- tickers
-auxiliary_df <- data.frame(matrix(ncol = length(tickers), nrow = 0))
-names(auxiliary_df) <- tickers
-dbWriteTable(connection, "CleanedRawData", auxiliary_df)
-```
-Preparing the SQL database:
+* creating empty data frames with as many collumns as are the ETFs
+* naming the columns with ETF tickers
 * establishing the connection (DB is on free on-line server)
 * limiting data pull to the last 3 years
 * populating the auxiliary data frame:
   + looping using ETF list
   + getting data from Yahoo Finance
   + dropping all columns except adjusted price
-* dropping any rows with NA
+  + dropping any rows with NA
+* Creating databases:
+  + Names_And_Tickers - for keeping tickers, Yahoo query symbols and ETF full names
+  + Ceaned_Daily_Data - I want to have 3 years of dayly closing prices on my server
+  + Momentum_1_Year - for final calculations of one year momentum
+
 ```{r}
+csv_tibble <- read_csv("ETFs.csv")
+tickers <- csv_tibble[2,] # for ease of use and read
+final_df <- data.frame(matrix(ncol = length(tickers), nrow = 0)) 
+names(final_df) <- tickers
+auxiliary_df <- data.frame(matrix(ncol = length(tickers), nrow = 0))
+names(auxiliary_df) <- tickers
+
 connection <- dbConnect(
-  RPostgreSQL::PostgreSQL(),
-  user="Kristoff",
-  password="Yeah, sure, like I would show it",
-  host="db.bit.io",
-  port=5432,
-  dbname="Kristoff/ETFs")
-starting_date = Sys.Date() - (3 * 365)
+  driver = RPostgreSQL::PostgreSQL(),
+  user = "Kristoff",
+  password = "Yeah, sure, like I would show it",
+  host = "db.bit.io",
+  port = 5432,
+  dbname = "Kristoff/ETFs")
+
+dbWriteTable(connection, "Names_And_Tickers", csv_tibble, overide = TRUE)
+dbWriteTable(connection, "Cleaned_Daily_Data", auxiliary_df, overide = TRUE)
+dbWriteTable(connection, "One_Year_Momentum", final_df, overide = TRUE)
+
+starting_date = Sys.Date() - (3 * 365) # only last 3 years of data
 for (ticker in tickers)
 {
-  auxiliary_df[ticker] <- 
-    getSymbols(ticker, from = starting_date, periodicity = "weekly", auto.apply = FALSE) %>% 
+  auxiliary_df[,ticker] <- 
+    getSymbols(ticker, from = starting_date, auto.apply = FALSE) %>% 
     ad()
 }
-auxiliary_df <- na.omit(auxiliary_df) %>% tail(104) # two years of data only
-dbWriteTable(connection, "CleanedRawData", value = auxiliary_df, overwrite = TRUE, append = FALSE, row.names = FALSE)
+auxiliary_df <- na.omit(auxiliary_df)
+dbWriteTable(connection, "Cleaned_Daily_Data", auxiliary_df, append = TRUE)
 ```
-If there is NA in any ETF's data I decided to drop whole row in df because I need the ETFs' momentum in relation to each other. That means it doesn't matter much if sometimes I have longer period for comparison as long as the period is exactly same for all the ETFs.
+__Explanation:__ You can see two lines above that if there is NA in any ETF data I decided to drop whole row in df because I need the ETFs' momentum in relation to each other. That means it doesn't matter much if sometimes I have longer period of shorter for comparison as long as the period is exactly same for all the ETFs.
 
-## THe calculations
+## The calculations
 * Calculating the momentum
 * Transforming the result in to _common_ percentage with only 2 decimals
 * Sending the results to the database
 * Disconecting as all the rest can be done locally
 ```{r}
-final_df <- ROC(auxiliary_df, n = 52, type = "discrete")
-laplay(final_df, function(x) round(auxiliary_df * 100,2))
-dbWriteTable(connection, "OneYearMomentum", final_df)
+auxiliary_df <- to.weekly(auxiliary_df, indexAt = "endof") %>% tail(104) # two years of weekly data only
+auxiliary_df <- ROC(auxiliary_df, n = 52, type = "discrete")
+final_df <- round(auxiliary_df * 100,2)
+dbWriteTable(connection, "One_Year_Momentum", final_df, append = TRUE)
+dbDisconnect(connection)
+```
+## Buildin the report
+
+```{r}
+auxiliary <- final_db
+
 ```
