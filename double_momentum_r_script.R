@@ -1,8 +1,16 @@
+################################################################################
+################################### PART ONE ################################### 
+########################## DUAL MOMENTUM WITH 10 ETFS ##########################
+############# METHODOLOGY AND NOTES IN ANALYTICS_WORKFLOW.RMD FILE #############
+################################################################################
+
 # Packages ---------------------------------------------------------------------
 install.packages("quantmod")
 install.packages("tidyverse")
 install.packages("RPostgres")
 install.packages("knitr")
+install.packages("reshape2")
+install.packages("ggplot2")
 
 # Libraries --------------------------------------------------------------------
 library(quantmod)
@@ -10,7 +18,9 @@ library(tidyverse)
 library(dplyr)
 library(RPostgres)
 library(knitr)
+library(reshape2)
 library(ggplot2)
+library(googlesheets4)
 
 # Postgres DB connection -------------------------------------------------------
 my_postgr <- dbConnect(
@@ -27,11 +37,8 @@ my_postgr <- dbConnect(
 start_date <- Sys.Date() - (3 * 365)
 end_date <- Sys.Date()
 etf_qts_env <- new.env()
-
 etf_query <- dbGetQuery(my_postgr, "SELECT * FROM etf_info;")
-# etfs_tickers <- as.vector(etf_query[["ticker_usd"]])
 yahoo_symbols <- as.vector(etf_query[["symbol_usd"]])
-# etfs_names <- as.vector(etf_query[["full_name"]])
 
 # daily quotes
 getSymbols(yahoo_symbols, 
@@ -70,14 +77,14 @@ if (dbExistsTable(my_postgr, "quotes_weekly")){
 dbWriteTable(my_postgr, "quotes_weekly", df_for_sql, row.names = FALSE)
 
 # Absolute Momentum Check ------------------------------------------------------
-positive_momentum <- rep(TRUE, ncol(weekly_closes))
-names(positive_momentum) <- names(weekly_closes)
+mm_direction <- rep(TRUE, ncol(weekly_closes))
+names(mm_direction) <- names(weekly_closes)
 for (ticker in names(weekly_closes)){
   ema30w <- EMA(weekly_closes[,ticker], n = 30)
   if (last(ema30w) < last(weekly_closes[,ticker])) {
-    positive_momentum[[ticker]] <- TRUE
+    mm_direction[[ticker]] <- TRUE
   } else {
-      positive_momentum[[ticker]] <- FALSE
+      mm_direction[[ticker]] <- FALSE
     }
 }
 
@@ -109,6 +116,7 @@ dbDisconnect(my_postgr)
 temp_df <- as_tibble(weekly_1ym)
 temp_df <- temp_df[,order(temp_df[nrow(temp_df),],decreasing = TRUE)]
 temp_df <- tail(temp_df, 1)
+ordered_n <- names(temp_df)
 
 descriptions <- NULL
 for (ticker in names(temp_df)) {
@@ -122,27 +130,67 @@ for (ticker in names(temp_df)) {
   gbx_tickers <- append(gbx_tickers, gbx_ticker)
 }
 
-
 leaderboard_data <- tibble(descriptions,
                            names(temp_df),
                            gbx_tickers,
-                           positive_momentum,
+                           mm_direction,
                            t(temp_df))
 
 names(leaderboard_data) <- c("ETF Full Name / Description",
-                             "USD", "GBP", "Positive Mm.", "1Y Mm. %")
+                             "USD", "GBP", "Above EMA", "1Y Mm. %")
 
-knitr::kable(leaderboard_data, 
-             "pipe", 
-             align = c("l", "c", "c", "c", "r"),
-             caption = "ETFs Leaderboard (In Descending Order)")
+leaderboard_data
 
 # Plot -------------------------------------------------------------------------
-plot_data <- tibble(date = df_for_sql$date, 
-                    select(df_for_sql, 
-                           leaderboard_data[[1, "USD"]], 
-                           leaderboard_data[[2, "USD"]], 
-                           leaderboard_data[[3, "USD"]], 
-                           leaderboard_data[[4, "USD"]], 
-                           leaderboard_data[[5, "USD"]]))
+temp_df <- select(df_for_sql, -date)
+temp_df <- temp_df[,order(temp_df[nrow(temp_df),],decreasing = TRUE)]
+temp_df <- select(temp_df, 1:3)
+temp_df <- tibble(date = df_for_sql$date, temp_df)
+temp_df <- tail(temp_df, 50)
+plot_data <- melt(temp_df, id = "date")
 
+best_3_plot <- ggplot(plot_data, aes(x = date, y = value, colour = variable)) +
+  geom_line() +
+  labs(title = "Top 3 ETFs With Best 1 Year Momentum",
+       subtitle = "all etfs listed on LSE",
+       caption = "datasource: www.yahoo.com",
+       x = NULL,
+       y = "Momentum %",
+       colour = "ETF") + 
+  theme(plot.title = element_text(colour = "navy", face = "bold"), 
+        plot.caption = element_text(face = "italic"), 
+        aspect.ratio = 9/16)
+
+best_3_plot
+
+# CSV Export -------------------------------------------------------------------
+write.csv(leaderboard_data, "dm_etf_leaders.csv")
+write.csv(temp_df, "dm_etf_all_50_weeks.csv")
+
+# Google Sheet Export ----------------------------------------------------------
+gs4_auth()
+my_gsheets <- gs4_get(Sys.getenv("file_id"))
+
+df_to_write <- leaderboard_data
+range_write(
+  my_gsheets,
+  df_to_write,
+  sheet = 1,
+  range = "one_year_momentum!A2:Z11",
+  col_names = FALSE,
+  reformat = TRUE
+)
+
+df_to_write <- df_for_sql
+range_write(
+  my_gsheets,
+  df_to_write,
+  sheet = "chart_data",
+  range = NULL,
+  col_names = TRUE,
+  reformat = TRUE
+)
+
+################################################################################
+############################### END OF  PART ONE ###############################
+################################################################################

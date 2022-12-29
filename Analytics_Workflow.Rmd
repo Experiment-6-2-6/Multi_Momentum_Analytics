@@ -1,5 +1,5 @@
 ---
-title: "Methodology"
+title: "Dual Momentum Analysis Methodology and Workflow"
 author: "Kristoff Dudek"
 date: "2022-11-26"
 output: html_document
