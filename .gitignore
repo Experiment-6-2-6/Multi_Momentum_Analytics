@@ -3,5 +3,7 @@
 .RData
 .Ruserdata
 .Renviron
-dm_etf_leaders.csv
-dm_etf_all_50_weeks.csv
+dm_etf_leaderboard.csv
+dm_etf_all_2_years_data.csv
+dm_classic_leaderboard.csv
+dm_classic_all_2_years_data.csv
