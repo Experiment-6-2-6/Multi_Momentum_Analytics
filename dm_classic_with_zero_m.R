@@ -38,8 +38,8 @@ my_postgr <- dbConnect(
 start_date <- Sys.Date() - (3 * 365)
 end_date <- Sys.Date()
 etf_qts_env <- new.env()
-etf_query <- dbGetQuery(my_postgr, "SELECT * FROM etf_info;")
-yahoo_symbols <- as.vector(etf_query[["symbol_usd"]])
+etf_query <- dbGetQuery(my_postgr, "SELECT * FROM dm_info;")
+yahoo_symbols <- as.vector(etf_query[["ticker"]])
 
 # daily quotes
 getSymbols(yahoo_symbols, 
@@ -146,7 +146,7 @@ temp_df <- tail(temp_df, 1)
 
 descriptions <- NULL
 for (ticker in names(temp_df)) {
-  description <- etf_query$full_name[etf_query$ticker_usd == ticker]
+  description <- etf_query$name[etf_query$ticker == ticker]
   descriptions <- append(descriptions, description)
 }
 
