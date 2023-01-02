@@ -3,6 +3,8 @@
 .RData
 .Ruserdata
 .Renviron
+test.R
+Analytics_Notebook.html
 dm_etf_leaderboard.csv
 dm_etf_all_2_years_data.csv
 dm_classic_leaderboard.csv
