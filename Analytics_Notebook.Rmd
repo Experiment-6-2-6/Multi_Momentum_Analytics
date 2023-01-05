@@ -6,6 +6,7 @@ output:
   prettydoc::html_pretty:
     theme: cayman
     highlight: github
+    toc: TRUE
 ---
 *This document is a record of my thought processes and a documentation of the workflow of the analysis.*
 
@@ -173,6 +174,10 @@ That gives 16 combinations plus one additional for performance of an optimised b
 
 # Methodology and Workflow
 
+Next few paragraphs are explanations of the code and the final workflow in each consecutive module.
+ 
+If you want to understand how the project is going and what problems and ideas I have (had) it can be better if you first read the "Issue Register" as it is an index of all problems, issues, ideas, changes and it is a description of the workflow in the project as a whole. 
+
 ## Module One: Data Mining
 
 I can use any of my baskets but I decided to work out the code using the set of 10 ETFs with a 30 week exponential moving average.
@@ -254,52 +259,16 @@ This part is rather for my convenience and I don't recommend running this chunk 
 
 It is only a single file because I had exported these two dataframes into one Google spreadsheet but into two separate sheets. The first one is a summary table and the second is hidden. Instead of showing it I use its data to create a chart on another (visible) sheet.
 
-# Issue Register
+## Module I - Code and Output
 
-Usually I don't show this part to stakeholders as it is not a part of any report but my experience as project manager taught me how important it is to have such a register.
+The example output shown here uses:
 
-If you are familiar with issue registers this one is quite different because it is only for me so there is no need for the owner, no dates (as I put things in it as they happen) etc. I can even say it is something between the issue register and project log.
+* selection of 10 ETFs
+* relative momentum of a year
+* absolute momentum judged by EMA(30)
+* checking / rebalancing period of a month
 
-1. I need to hide my credentials somehow to not commit them to the public by accident.
-2. There are big differences in how Google Colab and RStudio execute code. I need to build two versions of the code.
-
-**Solution:** I am going to use version control only in RStudio (connect with GitHub) and I will share my Google Colab only with people I trust.
-
-3. There are going to be too many source files to keep them in Colab.
-
-**Solution:** After consideration, I think that there is no real need to keep them in Colab. I am going to put a link to my GitHub repository for those who are interested.
-
-4. Is it really necessary to let readers interact with my data host?
-
-**Solution:** No. But without that the code will lose a lot of its demonstrative power (to show my skills) and I don't think that the customers will abuse the database. Anyway I can always disable the connection. Risks to benefits in costs of keeping the feature.
-
-5. After finishing the code I can easily gather data for all 16 cases of Double-Momentum use. Now I can focus on the next step but which one?
-
-**Solution:** I think that creating a code for portfolio optimization will be easies from the remaining tasks and it allows me to get the last (17th) set of data for comparison. So the next step will be module III.
-
-6. New Year's Day.
-
-**Solution:** Issue solved but I need a day of rest. (Current timestamp 2023-01-01 00:47:22) 😃🥂
-
-7. There is a problem connecting to the DB. It works in Google Colad but fails in RStudio. It demands the use of SSL but when I put “sslmode = ‘require’” it crashes the environment in RStudio.
-
-**Solution:** Switched from RPostgreSQL to RPostgres library. It allows SSL without any problem.
-
-8. I transformed the momentum calculation from scientific format too early. I need them only for data presentation (the last step) but in the DB it should be stored with big precision.
-
-**Solution:** << TO DO >>
-
-
-# Module I - Code Output
-```{r eval = FALSE}
-
-################################################################################
-################################### MODULE I ###################################
-########################## DUAL MOMENTUM WITH 10 ETFS ##########################
-############### ABSOLUTE MOMENTUM  MEASURED BY EMA(30) REFERENCE ###############
-################################ MONTHLY  CHECK ################################
-################################################################################
-
+```{r, label = 'packages', echo = TRUE, eval = FALSE}
 # Packages ---------------------------------------------------------------------
 install.packages("quantmod")
 install.packages("tidyverse")
@@ -307,7 +276,8 @@ install.packages("RPostgres")
 install.packages("gt")
 install.packages("reshape2")
 install.packages("ggplot2")
-
+```
+```{r, 'libraries', echo = TRUE, message = FALSE, warning = FALSE}
 # Libraries --------------------------------------------------------------------
 library(quantmod)
 library(tidyverse)
@@ -317,6 +287,8 @@ library(gt)
 library(reshape2)
 library(ggplot2)
 library(googlesheets4)
+```
+```{r, 'Connection-On', echo = TRUE, message = FALSE, warning = FALSE}
 
 # Postgres DB connection -------------------------------------------------------
 my_postgr <- dbConnect(
@@ -328,7 +300,8 @@ my_postgr <- dbConnect(
   port = 5432,
   sslmode = "require"
 )
-
+```
+```{r, 'Getting-Data', echo = TRUE, results = FALSE}
 # Getting the Data -------------------------------------------------------------
 start_date <- Sys.Date() - (3 * 365)
 end_date <- Sys.Date()
@@ -365,7 +338,8 @@ getSymbols(yahoo_symbols,
 monthly_closes <- do.call(merge, eapply(etf_qts_env, Ad))
 monthly_closes <- na.omit(monthly_closes)
 names(monthly_closes) <- gsub(".L.Adjusted", "", names(monthly_closes))
-
+```
+```{r, 'Quotes-to-DB', echo = TRUE, message = FALSE, warning = FALSE}
 # Writing into DB (quotes) -----------------------------------------------------
 # Have to transform into PostgreSQL format before sending to DB
 dc_for_sql <- as.data.frame(daily_closes)
@@ -388,7 +362,8 @@ if (dbExistsTable(my_postgr, "quotes_etfs_m")){
   dbRemoveTable(my_postgr, "quotes_etfs_m")
 }
 dbWriteTable(my_postgr, "quotes_etfs_m", mc_for_sql, row.names = FALSE)
-
+```
+```{r, 'Absolute-Mmt', echo = TRUE, message = FALSE, warning = FALSE}
 # Absolute Momentum Check ------------------------------------------------------
 mm_direction <- rep(TRUE, ncol(weekly_closes))
 names(mm_direction) <- names(weekly_closes)
@@ -400,7 +375,8 @@ for (ticker in names(weekly_closes)){
       mm_direction[[ticker]] <- FALSE
     }
 }
-
+```
+```{r, 'Relative-Mmt', echo = TRUE, message = FALSE, warning = FALSE}
 # Relative Momentum Calculation ------------------------------------------------
 daily_1ym <- ROC(daily_closes, n = 252, type = "discrete") %>%  
               na.omit() %>% "*"(100) %>% round(2)
@@ -408,7 +384,8 @@ weekly_1ym <- ROC(weekly_closes, n = 50, type = "discrete") %>%
                 na.omit() %>% "*"(100) %>% round(2)
 monthly_1ym <- ROC(monthly_closes, n = 12, type = "discrete") %>% 
                  na.omit() %>% "*"(100) %>% round(2)
-
+```
+```{r, 'Momentum-to-DB', echo = TRUE, message = FALSE, warning = FALSE}
 # Writing into DB (momentum) ---------------------------------------------------
 dm_for_sql <- as.data.frame(daily_1ym)
 dm_for_sql <- cbind(date = as.Date(rownames(dm_for_sql)), dm_for_sql)
@@ -430,10 +407,12 @@ if (dbExistsTable(my_postgr, "momentum_etfs_m")) {
   dbRemoveTable(my_postgr, "momentum_etfs_m")
 }
 dbWriteTable(my_postgr, "momentum_etfs_m", mm_for_sql, row.names = FALSE)
-
+```
+```{r, 'Connection-Off', echo = TRUE, message = FALSE, warning = FALSE}
 # Connection Off ---------------------------------------------------------------
 dbDisconnect(my_postgr)
-
+```
+```{r, 'Table', echo = TRUE, message = FALSE, warning = FALSE}
 # Leaderboard Table ------------------------------------------------------------
 temp_df <- as_tibble(monthly_1ym)
 temp_df <- temp_df[,order(temp_df[nrow(temp_df),],decreasing = TRUE)]
@@ -473,7 +452,8 @@ leaderboard_table <-
              Y_Mm = "1Y Mm %")
   
 leaderboard_table
-
+```
+```{r, 'Plot', echo = TRUE, warning = FALSE, out.width= '100%', fig.asp = '1.618', dpi = 96}
 # Plot -------------------------------------------------------------------------
 temp_df <- select(wm_for_sql, -date)
 temp_df <- temp_df[,order(temp_df[nrow(temp_df),],decreasing = TRUE)]
@@ -497,11 +477,13 @@ best_3_plot <- ggplot(plot_data, aes(x = date, y = value, colour = variable)) +
         aspect.ratio = 9/16)
 
 best_3_plot
-
+```
+```{r, 'CSV-Export', echo = TRUE, eval = FALSE}
 # CSV Export -------------------------------------------------------------------
 write.csv(leaderboard_data, "dm_etf_leaderboard.csv")
 write.csv(temp_df, "dm_etf_all_2_years_data.csv")
-
+```
+```{r, 'Google-Export', echo = TRUE, eval = FALSE}
 # Google Sheet Export ----------------------------------------------------------
 gs4_auth()
 my_gsheets <- gs4_get(Sys.getenv("file_id"))
@@ -529,6 +511,120 @@ range_write(
 ################################################################################
 ############################### END OF  MODULE I ###############################
 ################################################################################
-
 ```
+# Additional Info
 
+## Issue Register
+
+Usually I don't show this part to stakeholders as it is not a part of any report but my experience as project manager taught me how important it is to have such a register.
+
+If you are familiar with issue registers this one is quite different because it is only for me so there is no need for the owner, no dates (as I put things in it as they happen) etc. I can even say it is something between the issue register and project log.
+
+---
+
+1. I need to hide my credentials somehow to not commit them to the public by accident.
+2. There are big differences in how Google Colab and RStudio execute code. I need to build two versions of the code.
+
+**Solution:** I am going to use version control only in RStudio (with GitHub) and I will share my Google Colab only with people I trust.
+
+---
+
+3. There are going to be too many source files to keep them in Colab.
+
+**Solution:** After consideration, I think that there is no real need to keep them in Colab. I am going to put a link to my GitHub repository for whose who are interested.
+
+---
+
+4. Is it really necessary to let readers interact with my data host?
+
+**Solution:** No. But without that the code will lose a lot of its demonstrative power (to show my skills) and I don't think that the customers will abuse the database. Anyway I can always disable the connection. Risks to benefits in costs of keeping the feature.
+
+---
+
+5. After finishing the code I can easily gather data for all 16 cases of Double-Momentum use. Now I can focus on the next step but which one?
+
+**Solution:** I think that creating a code for portfolio optimization will be easier from the all remaining tasks and it allows me to get the last (17th) set of data for comparison. So the next step will be module III.
+
+---
+
+6. New Year's Day.
+
+**Solution:** Issue solved but I need a day of rest. (Current timestamp 2023-01-01 00:47:22) 😃🥂
+
+---
+
+7. There is a problem connecting to the DB. It works in Google Colab but fails in RStudio. It demands the use of SSL but when I put “sslmode = ‘require’” it crashes the environment in RStudio.
+
+**Solution:** Switched from RPostgreSQL to RPostgres library. It allows SSL without any problem.
+
+---
+
+8. I transformed the momentum calculation from scientific format too early. I need them only for data presentation (the last step) but in the DB it should be stored with big precision.
+
+**!! ONGOING !!**
+
+---
+
+9. I should have put the dates in this issue register. Without them I have lost a lot of explanatory power in this notebook. I missed the point that I am not the only stakeholder of this project anymore (readers are too). From now on I am going to put opening and closing dates in here.
+
+---
+
+**2023-01-03**
+10. I forgot to save the calculation results for absolute momentum.I am going to need them in Module II for backtesting.
+
+**!! ONGOING !!**
+
+**2023-01-03**
+11. I need to include CSV files with my database dump for those who don't want to use databases or maybe I should only just describe a table structure for the code to work?
+
+**!! ONGOING !!**
+
+---
+
+**2023-01-05**
+
+12. There are many too many code files. I need to rewrite them in the way that one file will generate data using monthly and weekly intervals in one go.
+
+**!! ONGOING !!**
+
+---
+
+
+## Project files on GitHub
+
+*.gitignore* – internal GitHub configuration file
+
+*Analytics_Notebook.Rmd* – The Project’s notebook, explanation and comments.
+
+*project.Rproj* – Rstudio Project file
+
+*README.md* - Short description for the first contact
+
+*tests.R* – for testing new ideas and experimenting
+
+
+Files beneath are used for data mining (1 year momentum calculation)
+
+*dm_classic_with_ema_m.R* – classic ETF set, absolute momt. using EMA(30), monthly interval
+
+*dm_classic_with_ema_w.R* – classic ETF set, abs. momt. using EMA(30), weekly interval
+
+*dm_classic_with_zero_m.R* – classic ETF set, abs. momt. using 0, monthly interval
+
+*dm_classic_with_zero_w.R* – classic ETF set, abs. momt. using 0, weekly interval
+
+*dm_etfs_with_ema_m.R* – 10 ETFs, abs. momt. using EMA(30), monthly interval
+
+*dm_etfs_with_ema_w.R* – 10 ETFs, abs. momt. using EMA(30), weekly interval
+
+*dm_etfs_with_zero_m.R* – 10 ETFs, abs. momt. using 0, monthly interval
+
+*dm_etfs_with_zero_w.R* – 10 ETFs, abs. momt. using 0, weekly interval
+
+*dm_crypto_with_ema_m.R* – basket of crypto, abs. momt. using EMA(30), monthly interval
+
+*dm_crypto_with_ema_w.R* – basket of crypto, abs. momt. using EMA(30), weekly interval
+
+*dm_crypto_with_zero_m.R* – basket of crypto, abs. momt. using 0, monthly interval
+
+*dm_crypto_with_zero_w.R* – basket of crypto, abs. momt. using 0, weekly interval

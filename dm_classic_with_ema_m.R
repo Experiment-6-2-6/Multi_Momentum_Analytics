@@ -1,18 +1,9 @@
 ################################################################################
-################################### PART ONE ################################### 
 ######################## DUAL MOMENTUM  CLASSIC VESSION ########################
 ############### ABSOLUTE MOMENTUM  MEASURED BY EMA(30) REFERENCE ###############
 ################################ MONTHLY  CHECK ################################
 ################################################################################
-
-# Packages ---------------------------------------------------------------------
-install.packages("quantmod")
-install.packages("tidyverse")
-install.packages("RPostgres")
-install.packages("gt")
-install.packages("reshape2")
-install.packages("ggplot2")
-
+                            IT IS NOT MONTHLY
 # Libraries --------------------------------------------------------------------
 library(quantmod)
 library(tidyverse)
@@ -49,7 +40,7 @@ getSymbols(yahoo_symbols,
            env = etf_qts_env)
 daily_closes <- do.call(merge, eapply(etf_qts_env, Ad))
 daily_closes <- na.omit(daily_closes)
-names(daily_closes) <- gsub(".L.Adjusted", "", names(daily_closes))
+names(daily_closes) <- gsub(".Adjusted", "", names(daily_closes))
 
 # weekly quotes
 getSymbols(yahoo_symbols, 
@@ -59,7 +50,7 @@ getSymbols(yahoo_symbols,
            env = etf_qts_env)
 weekly_closes <- do.call(merge, eapply(etf_qts_env, Ad))
 weekly_closes <- na.omit(weekly_closes)
-names(weekly_closes) <- gsub(".L.Adjusted", "", names(weekly_closes))
+names(weekly_closes) <- gsub(".Adjusted", "", names(weekly_closes))
 
 # monthly quotes
 getSymbols(yahoo_symbols, 
@@ -69,7 +60,7 @@ getSymbols(yahoo_symbols,
            env = etf_qts_env)
 monthly_closes <- do.call(merge, eapply(etf_qts_env, Ad))
 monthly_closes <- na.omit(monthly_closes)
-names(monthly_closes) <- gsub(".L.Adjusted", "", names(monthly_closes))
+names(monthly_closes) <- gsub(".Adjusted", "", names(monthly_closes))
 
 # Writing into DB (quotes) -----------------------------------------------------
 # Have to transform into PostgreSQL format before sending to DB
@@ -107,12 +98,9 @@ for (ticker in names(weekly_closes)){
 }
 
 # Relative Momentum Calculation ------------------------------------------------
-daily_1ym <- ROC(daily_closes, n = 252, type = "discrete") %>%  
-              na.omit() %>% "*"(100) %>% round(2)
-weekly_1ym <- ROC(weekly_closes, n = 50, type = "discrete") %>%  
-                na.omit() %>% "*"(100) %>% round(2)
-monthly_1ym <- ROC(monthly_closes, n = 12, type = "discrete") %>% 
-                 na.omit() %>% "*"(100) %>% round(2)
+daily_1ym <- ROC(daily_closes, n = 252, type = "discrete") %>%  na.omit()
+weekly_1ym <- ROC(weekly_closes, n = 50, type = "discrete") %>% na.omit()
+monthly_1ym <- ROC(monthly_closes, n = 12, type = "discrete") %>% na.omit()
 
 # Writing into DB (momentum) ---------------------------------------------------
 dm_for_sql <- as.data.frame(daily_1ym)
@@ -142,7 +130,7 @@ dbDisconnect(my_postgr)
 # Leaderboard Table ------------------------------------------------------------
 temp_df <- as_tibble(monthly_1ym)
 temp_df <- temp_df[,order(temp_df[nrow(temp_df),],decreasing = TRUE)]
-temp_df <- tail(temp_df, 1)
+temp_df <- tail(temp_df, 1) %>% "*"(100) %>% round(2)
 
 descriptions <- NULL
 for (ticker in names(temp_df)) {
@@ -161,7 +149,7 @@ names(leaderboard_data) <- c("etf_name",
 leaderboard_table <-  
   gt(leaderboard_data) %>% 
   tab_header(title = md("**ETFs Sorted By 1 Year Momentum**"), 
-             subtitle = "last 2 years of data") %>% 
+             subtitle = "last 2 years of data (weekly)") %>% 
   tab_source_note(md("_datasource: www.yahoo.com_")) %>% 
   tab_style(style = list(cell_text(color = "#196F3D")),
     locations = cells_body(columns = Above_EMA, rows = Above_EMA == TRUE)) %>% 
@@ -182,14 +170,14 @@ leaderboard_table
 # Plot -------------------------------------------------------------------------
 temp_df <- select(wm_for_sql, -date)
 temp_df <- temp_df[,order(temp_df[nrow(temp_df),],decreasing = TRUE)]
-temp_df <- select(temp_df, 1:3)
+temp_df <- select(temp_df, 1:3) %>% "*"(100) %>% round(2)
 temp_df <- tibble(date = wm_for_sql$date, temp_df)
 temp_df <- tail(temp_df, 24)
 plot_data <- melt(temp_df, id = "date")
 
 best_3_plot <- ggplot(plot_data, aes(x = date, y = value, colour = variable)) +
   geom_line() +
-  labs(title = "Top 3 ETFs With Best 1 Year Momentum",
+  labs(title = "ETFs by the best 1 Year Momentum",
        subtitle = "last 2 years of data",
        caption = "datasource: www.yahoo.com",
        x = NULL,
@@ -207,30 +195,6 @@ best_3_plot
 write.csv(leaderboard_data, "dm_classic_leaderboard.csv")
 write.csv(temp_df, "dm_classic_all_2_years_data.csv")
 
-# Google Sheet Export ----------------------------------------------------------
-gs4_auth()
-my_gsheets <- gs4_get(Sys.getenv("file_id"))
-
-df_to_write <- leaderboard_data
-range_write(
-  my_gsheets,
-  df_to_write,
-  sheet = 1,
-  range = "one_year_momentum!A2:Z11",
-  col_names = FALSE,
-  reformat = TRUE
-)
-
-df_to_write <- wc_for_sql
-range_write(
-  my_gsheets,
-  df_to_write,
-  sheet = "chart_data",
-  range = NULL,
-  col_names = TRUE,
-  reformat = TRUE
-)
-
 ################################################################################
-############################### END OF  PART ONE ###############################
+################################### THE  END ###################################
 ################################################################################
