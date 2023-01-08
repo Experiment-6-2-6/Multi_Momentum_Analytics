@@ -3,7 +3,7 @@
 ############### ABSOLUTE MOMENTUM  MEASURED BY EMA(30) REFERENCE ###############
 ################################ MONTHLY  CHECK ################################
 ################################################################################
-                            IT IS NOT MONTHLY
+
 # Libraries --------------------------------------------------------------------
 library(quantmod)
 library(tidyverse)
@@ -86,15 +86,26 @@ if (dbExistsTable(my_postgr, "quotes_dm_m")){
 dbWriteTable(my_postgr, "quotes_dm_m", mc_for_sql, row.names = FALSE)
 
 # Absolute Momentum Check ------------------------------------------------------
-mm_direction <- rep(TRUE, ncol(weekly_closes))
-names(mm_direction) <- names(weekly_closes)
+abs_mmt_state_m <- rep(TRUE, ncol(monthly_closes))
+names(abs_mmt_state_m) <- names(monthly_closes)
+for (ticker in names(monthly_closes)){
+  ema7m <- EMA(monthly_closes[,ticker], n = 7)
+  if (last(ema7m) < last(monthly_closes[,ticker])) {
+    abs_mmt_state_m[[ticker]] <- TRUE
+  } else {
+      abs_mmt_state_m[[ticker]] <- FALSE
+    }
+}
+
+abs_mmt_state_w <- rep(TRUE, ncol(weekly_closes))
+names(abs_mmt_state_w) <- names(weekly_closes)
 for (ticker in names(weekly_closes)){
   ema30w <- EMA(weekly_closes[,ticker], n = 30)
   if (last(ema30w) < last(weekly_closes[,ticker])) {
-    mm_direction[[ticker]] <- TRUE
+    abs_mmt_state_w[[ticker]] <- TRUE
   } else {
-      mm_direction[[ticker]] <- FALSE
-    }
+    abs_mmt_state_w[[ticker]] <- FALSE
+  }
 }
 
 # Relative Momentum Calculation ------------------------------------------------
@@ -128,28 +139,29 @@ dbWriteTable(my_postgr, "momentum_dm_m", mm_for_sql, row.names = FALSE)
 dbDisconnect(my_postgr)
 
 # Leaderboard Table ------------------------------------------------------------
-temp_df <- as_tibble(monthly_1ym)
-temp_df <- temp_df[,order(temp_df[nrow(temp_df),],decreasing = TRUE)]
-temp_df <- tail(temp_df, 1) %>% "*"(100) %>% round(2)
+# preparing the monthly table
+temp_df_m <- as_tibble(monthly_1ym)
+temp_df_m <- temp_df_m[,order(temp_df_m[nrow(temp_df_m),],decreasing = TRUE)]
+temp_df_m <- tail(temp_df_m, 1) %>% "*"(100) %>% round(2)
 
 descriptions <- NULL
-for (ticker in names(temp_df)) {
+for (ticker in names(temp_df_m)) {
   description <- etf_query$name[etf_query$ticker == ticker]
   descriptions <- append(descriptions, description)
 }
 
-leaderboard_data <- tibble(descriptions,
-                           names(temp_df),
-                           mm_direction,
-                           t(temp_df))
+leaderboard_data_m <- tibble(descriptions,
+                           names(temp_df_m),
+                           abs_mmt_state_m,
+                           t(temp_df_m))
 
-names(leaderboard_data) <- c("etf_name",
+names(leaderboard_data_m) <- c("etf_name",
                              "USD", "Above_EMA", "Y_Mm")
 
-leaderboard_table <-  
-  gt(leaderboard_data) %>% 
+leaderboard_table_m <-  
+  gt(leaderboard_data_m) %>% 
   tab_header(title = md("**ETFs Sorted By 1 Year Momentum**"), 
-             subtitle = "last 2 years of data (weekly)") %>% 
+             subtitle = "last 2 years of data (monthly)") %>% 
   tab_source_note(md("_datasource: www.yahoo.com_")) %>% 
   tab_style(style = list(cell_text(color = "#196F3D")),
     locations = cells_body(columns = Above_EMA, rows = Above_EMA == TRUE)) %>% 
@@ -164,21 +176,72 @@ leaderboard_table <-
              USD = "Ticker",
              Above_EMA = "Above EMA", 
              Y_Mm = "1Y Mm %")
-  
-leaderboard_table
+
+# preparing the weekly table
+temp_df_w <- as_tibble(weekly_1ym)
+temp_df_w <- temp_df_w[,order(temp_df_w[nrow(temp_df_w),],decreasing = TRUE)]
+temp_df_w <- tail(temp_df_w, 1) %>% "*"(100) %>% round(2)
+
+descriptions <- NULL
+for (ticker in names(temp_df_w)) {
+  description <- etf_query$name[etf_query$ticker == ticker]
+  descriptions <- append(descriptions, description)
+}
+
+leaderboard_data_w <- tibble(descriptions,
+                             names(temp_df_w),
+                             abs_mmt_state_w,
+                             t(temp_df_w))
+
+names(leaderboard_data_m) <- c("etf_name",
+                               "USD", "Above_EMA", "Y_Mm")
+
+
+leaderboard_data_w <- tibble(descriptions,
+                           names(temp_df_w),
+                           abs_mmt_state_w,
+                           t(temp_df_w))
+
+names(leaderboard_data_w) <- c("etf_name",
+                             "USD", "Above_EMA", "Y_Mm")
+
+leaderboard_table_w <-  
+  gt(leaderboard_data_w) %>% 
+  tab_header(title = md("**ETFs Sorted By 1 Year Momentum**"), 
+             subtitle = "last 2 years of data (weekly)") %>% 
+  tab_source_note(md("_datasource: www.yahoo.com_")) %>% 
+  tab_style(style = list(cell_text(color = "#196F3D")),
+            locations = cells_body(columns = Above_EMA, 
+                                   rows = Above_EMA == TRUE)) %>% 
+  tab_style(style = list(cell_text(color = "#7B241C")),
+            locations = cells_body(columns = Above_EMA, 
+                                   rows = Above_EMA == FALSE)) %>% 
+  tab_style(style = list(cell_fill(color = "#E8F8F5"),
+                         cell_text(weight =  "bold")),
+            locations = cells_body(rows = 1)) %>% 
+  tab_style(style = cell_text(align = "right"),
+            locations = cells_source_notes()) %>%
+  cols_label(etf_name = "ETF Full Name / Description", 
+             USD = "Ticker",
+             Above_EMA = "Above EMA", 
+             Y_Mm = "1Y Mm %")
+
+leaderboard_table_w
+leaderboard_table_m
 
 # Plot -------------------------------------------------------------------------
-temp_df <- select(wm_for_sql, -date)
-temp_df <- temp_df[,order(temp_df[nrow(temp_df),],decreasing = TRUE)]
-temp_df <- select(temp_df, 1:3) %>% "*"(100) %>% round(2)
-temp_df <- tibble(date = wm_for_sql$date, temp_df)
-temp_df <- tail(temp_df, 24)
-plot_data <- melt(temp_df, id = "date")
+# momentum plot weekly
+temp_df_w <- select(wm_for_sql, -date)
+temp_df_w <- temp_df_w[,order(temp_df_w[nrow(temp_df_w),],decreasing = TRUE)]
+temp_df_w <- select(temp_df_w, 1:3) %>% "*"(100) %>% round(2)
+temp_df_w <- tibble(date = wm_for_sql$date, temp_df_w)
+temp_df_w <- tail(temp_df_w, 100)
+plot_data_w <- melt(temp_df_w, id = "date")
 
-best_3_plot <- ggplot(plot_data, aes(x = date, y = value, colour = variable)) +
+best_3_plot_w <- ggplot(plot_data_w, aes(x = date, y = value, colour = variable)) +
   geom_line() +
   labs(title = "ETFs by the best 1 Year Momentum",
-       subtitle = "last 2 years of data",
+       subtitle = "last 2 years of data (weekly)",
        caption = "datasource: www.yahoo.com",
        x = NULL,
        y = "Momentum %",
@@ -189,11 +252,36 @@ best_3_plot <- ggplot(plot_data, aes(x = date, y = value, colour = variable)) +
         plot.caption = element_text(face = "italic"), 
         aspect.ratio = 9/16)
 
-best_3_plot
+# momentum plot monthly
+temp_df_m <- select(mm_for_sql, -date)
+temp_df_m <- temp_df_m[,order(temp_df_m[nrow(temp_df_m),],decreasing = TRUE)]
+temp_df_m <- select(temp_df_m, 1:3) %>% "*"(100) %>% round(2)
+temp_df_m <- tibble(date = mm_for_sql$date, temp_df_m)
+temp_df_m <- tail(temp_df_m, 24)
+plot_data_m <- melt(temp_df_m, id = "date")
+
+best_3_plot_m <- ggplot(plot_data_m, aes(x = date, y = value, colour = variable)) +
+  geom_line() +
+  labs(title = "ETFs by the best 1 Year Momentum",
+       subtitle = "last 2 years of data (monthly)",
+       caption = "datasource: www.yahoo.com",
+       x = NULL,
+       y = "Momentum %",
+       colour = "ETF") + 
+  theme_minimal() +
+  theme(plot.title = element_text(colour = "#3498DB", face = "bold"), 
+        plot.subtitle = element_text(colour = "#555555", face = "bold"), 
+        plot.caption = element_text(face = "italic"), 
+        aspect.ratio = 9/16)
+
+best_3_plot_w
+best_3_plot_m
 
 # CSV Export -------------------------------------------------------------------
-write.csv(leaderboard_data, "dm_classic_leaderboard.csv")
-write.csv(temp_df, "dm_classic_all_2_years_data.csv")
+write.csv(leaderboard_data_w, "dm_classic_weekly.csv")
+write.csv(leaderboard_data_m, "dm_classic_monthly.csv")
+write.csv(temp_df_w, "dm_classic_2_years_of_mmt_data_weekly.csv")
+write.csv(temp_df_m, "dm_classic_2_years_of_mmt_data_monthly.csv")
 
 ################################################################################
 ################################### THE  END ###################################

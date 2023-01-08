@@ -5,7 +5,13 @@
 .Renviron
 test.R
 Analytics_Notebook.html
-dm_etf_leaderboard.csv
-dm_etf_all_2_years_data.csv
-dm_classic_leaderboard.csv
-dm_classic_all_2_years_data.csv
+dm_classic_weekly.csv
+dm_classic_monthly.csv
+dm_classic_2_years_of_mmt_data_weekly.csv
+dm_classic_2_years_of_mmt_data_monthly.csv
+dm_10_etfs_weekly.csv
+dm_10_etfs_monthly.csv
+dm_10_etf_all_2_years_of_data.csv
+dm_crypto_weekly.csv
+dm_crypto_monthly.csv
+dm_crypto_all_2_years_data.csv
