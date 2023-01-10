@@ -1,5 +1,5 @@
 ################################################################################
-######################## DUAL MOMENTUM  CLASSIC VERSION ########################
+######################### DUAL MOMENTUM CRYPTO VERSION #########################
 ############### ABSOLUTE MOMENTUM  MEASURED BY EMA(30) REFERENCE ###############
 ################################################################################
 
@@ -31,7 +31,7 @@ my_postgr <- dbConnect(
 start_date <- Sys.Date() - (3 * 365)
 end_date <- Sys.Date()
 etf_qts_env <- new.env()
-etf_query <- dbGetQuery(my_postgr, "SELECT * FROM dm_info;")
+etf_query <- dbGetQuery(my_postgr, "SELECT * FROM crypto_info;")
 yahoo_symbols <- as.vector(etf_query[["ticker"]])
 
 # daily quotes
@@ -42,7 +42,7 @@ getSymbols(yahoo_symbols,
            env = etf_qts_env)
 daily_closes <- do.call(merge, eapply(etf_qts_env, Ad))
 daily_closes <- na.omit(daily_closes)
-names(daily_closes) <- gsub(".Adjusted", "", names(daily_closes))
+names(daily_closes) <- gsub("-USD.Adjusted", "", names(daily_closes))
 
 # weekly quotes
 getSymbols(yahoo_symbols, 
@@ -52,7 +52,7 @@ getSymbols(yahoo_symbols,
            env = etf_qts_env)
 weekly_closes <- do.call(merge, eapply(etf_qts_env, Ad))
 weekly_closes <- na.omit(weekly_closes)
-names(weekly_closes) <- gsub(".Adjusted", "", names(weekly_closes))
+names(weekly_closes) <- gsub("-USD.Adjusted", "", names(weekly_closes))
 
 # monthly quotes
 getSymbols(yahoo_symbols, 
@@ -62,31 +62,31 @@ getSymbols(yahoo_symbols,
            env = etf_qts_env)
 monthly_closes <- do.call(merge, eapply(etf_qts_env, Ad))
 monthly_closes <- na.omit(monthly_closes)
-names(monthly_closes) <- gsub(".Adjusted", "", names(monthly_closes))
+names(monthly_closes) <- gsub("-USD.Adjusted", "", names(monthly_closes))
 
 # Writing into DB (quotes) -----------------------------------------------------
 
 # Have to transform into PostgreSQL format before sending to DB
 dc_for_sql <- as.data.frame(daily_closes)
 dc_for_sql <- cbind(date = as.Date(rownames(dc_for_sql)), dc_for_sql)
-if (dbExistsTable(my_postgr, "quotes_dm_d")) {
-  dbRemoveTable(my_postgr, "quotes_dm_d")
+if (dbExistsTable(my_postgr, "quotes_crp_d")) {
+  dbRemoveTable(my_postgr, "quotes_crp_d")
 }
-dbWriteTable(my_postgr, "quotes_dm_d", dc_for_sql, row.names = FALSE)
+dbWriteTable(my_postgr, "quotes_crp_d", dc_for_sql, row.names = FALSE)
 
 wc_for_sql <- as.data.frame(weekly_closes)
 wc_for_sql <- cbind(date = as.Date(rownames(wc_for_sql)), wc_for_sql)
-if (dbExistsTable(my_postgr, "quotes_dm_w")){
-  dbRemoveTable(my_postgr, "quotes_dm_w")
+if (dbExistsTable(my_postgr, "quotes_crp_w")){
+  dbRemoveTable(my_postgr, "quotes_crp_w")
 }
-dbWriteTable(my_postgr, "quotes_dm_w", wc_for_sql, row.names = FALSE)
+dbWriteTable(my_postgr, "quotes_crp_w", wc_for_sql, row.names = FALSE)
 
 mc_for_sql <- as.data.frame(monthly_closes)
 mc_for_sql <- cbind(date = as.Date(rownames(mc_for_sql)), mc_for_sql)
-if (dbExistsTable(my_postgr, "quotes_dm_m")){
-  dbRemoveTable(my_postgr, "quotes_dm_m")
+if (dbExistsTable(my_postgr, "quotes_crp_m")){
+  dbRemoveTable(my_postgr, "quotes_crp_m")
 }
-dbWriteTable(my_postgr, "quotes_dm_m", mc_for_sql, row.names = FALSE)
+dbWriteTable(my_postgr, "quotes_crp_m", mc_for_sql, row.names = FALSE)
 
 # Absolute Momentum Check ------------------------------------------------------
 
@@ -124,24 +124,24 @@ monthly_1ym <- ROC(monthly_closes, n = 12, type = "discrete") %>% na.omit()
 
 dm_for_sql <- as.data.frame(daily_1ym)
 dm_for_sql <- cbind(date = as.Date(rownames(dm_for_sql)), dm_for_sql)
-if (dbExistsTable(my_postgr, "momentum_dm_d")) {
-  dbRemoveTable(my_postgr, "momentum_dm_d")
+if (dbExistsTable(my_postgr, "momentum_crp_d")) {
+  dbRemoveTable(my_postgr, "momentum_crp_d")
 }
-dbWriteTable(my_postgr, "momentum_dm_d", dm_for_sql, row.names = FALSE)
+dbWriteTable(my_postgr, "momentum_crp_d", dm_for_sql, row.names = FALSE)
 
 wm_for_sql <- as.data.frame(weekly_1ym)
 wm_for_sql <- cbind(date = as.Date(rownames(wm_for_sql)), wm_for_sql)
-if (dbExistsTable(my_postgr, "momentum_dm_w")) {
-  dbRemoveTable(my_postgr, "momentum_dm_w")
+if (dbExistsTable(my_postgr, "momentum_crp_w")) {
+  dbRemoveTable(my_postgr, "momentum_crp_w")
 }
-dbWriteTable(my_postgr, "momentum_dm_w", wm_for_sql, row.names = FALSE)
+dbWriteTable(my_postgr, "momentum_crp_w", wm_for_sql, row.names = FALSE)
 
 mm_for_sql <- as.data.frame(monthly_1ym)
 mm_for_sql <- cbind(date = as.Date(rownames(mm_for_sql)), mm_for_sql)
-if (dbExistsTable(my_postgr, "momentum_dm_m")) {
-  dbRemoveTable(my_postgr, "momentum_dm_m")
+if (dbExistsTable(my_postgr, "momentum_crp_m")) {
+  dbRemoveTable(my_postgr, "momentum_crp_m")
 }
-dbWriteTable(my_postgr, "momentum_dm_m", mm_for_sql, row.names = FALSE)
+dbWriteTable(my_postgr, "momentum_crp_m", mm_for_sql, row.names = FALSE)
 
 # Connection Off ---------------------------------------------------------------
 
@@ -156,7 +156,7 @@ temp_df_w <- tail(temp_df_w, 1) %>% "*"(100) %>% round(2)
 
 descriptions <- NULL
 for (ticker in names(temp_df_w)) {
-  description <- etf_query$name[etf_query$ticker == ticker]
+  description <- etf_query$name[etf_query$ticker == paste0(ticker, "-USD")]
   descriptions <- append(descriptions, description)
 }
 
@@ -170,9 +170,9 @@ names(leaderboard_data_w) <- c("etf_name",
 
 leaderboard_table_w <-  
   gt(leaderboard_data_w) %>% 
-  tab_header(title = md("**ETFs Sorted By 1 Year Momentum**"), 
+  tab_header(title = md("**Cryptos Sorted By 1 Year Momentum**"), 
              subtitle = "last 2 years of data (weekly)") %>% 
-  tab_source_note(md("_datasource: www.yahoo.com_")) %>% 
+  tab_source_note(md("_Datasource: CoinMarketCap via Yahoo Finance_")) %>% 
   tab_style(style = list(cell_text(color = "#196F3D")),
             locations = cells_body(columns = Above_EMA, 
                                    rows = Above_EMA == TRUE)) %>% 
@@ -196,7 +196,7 @@ temp_df_m <- tail(temp_df_m, 1) %>% "*"(100) %>% round(2)
 
 descriptions <- NULL
 for (ticker in names(temp_df_m)) {
-  description <- etf_query$name[etf_query$ticker == ticker]
+  description <- etf_query$name[etf_query$ticker == paste0(ticker, "-USD")]
   descriptions <- append(descriptions, description)
 }
 
@@ -210,9 +210,9 @@ names(leaderboard_data_m) <- c("etf_name",
 
 leaderboard_table_m <-  
   gt(leaderboard_data_m) %>% 
-  tab_header(title = md("**ETFs Sorted By 1 Year Momentum**"), 
+  tab_header(title = md("**Cryptos Sorted By 1 Year Momentum**"), 
              subtitle = "last 2 years of data (monthly)") %>% 
-  tab_source_note(md("_datasource: www.yahoo.com_")) %>% 
+  tab_source_note(md("_Datasource: CoinMarketCap via Yahoo Finance_")) %>% 
   tab_style(style = list(cell_text(color = "#196F3D")),
     locations = cells_body(columns = Above_EMA, rows = Above_EMA == TRUE)) %>% 
   tab_style(style = list(cell_text(color = "#7B241C")),
@@ -243,9 +243,9 @@ plot_data_w <- melt(temp_df_w, id = "date")
 best_3_plot_w <- ggplot(plot_data_w, 
                         aes(x = date, y = value, colour = variable)) +
   geom_line() +
-  labs(title = "ETFs by the best 1 Year Momentum",
+  labs(title = "Cryptos by the best 1 Year Momentum",
        subtitle = "last 2 years of data (weekly)",
-       caption = "datasource: www.yahoo.com",
+       caption = "_Datasource: CoinMarketCap via Yahoo Finance_",
        x = NULL,
        y = "Momentum %",
        colour = "ETF") + 
@@ -266,9 +266,9 @@ plot_data_m <- melt(temp_df_m, id = "date")
 best_3_plot_m <- ggplot(plot_data_m, 
                         aes(x = date, y = value, colour = variable)) +
   geom_line() +
-  labs(title = "ETFs by the best 1 Year Momentum",
+  labs(title = "Cryptos by the best 1 Year Momentum",
        subtitle = "last 2 years of data (monthly)",
-       caption = "datasource: www.yahoo.com",
+       caption = "_Datasource: CoinMarketCap via Yahoo Finance_",
        x = NULL,
        y = "Momentum %",
        colour = "ETF") + 
@@ -283,10 +283,10 @@ best_3_plot_m
 
 # CSV Export -------------------------------------------------------------------
 
-write.csv(leaderboard_data_w, "dm_classic_weekly.csv")
-write.csv(leaderboard_data_m, "dm_classic_monthly.csv")
-write.csv(temp_df_w, "dm_classic_2_years_of_mmt_data_weekly.csv")
-write.csv(temp_df_m, "dm_classic_2_years_of_mmt_data_monthly.csv")
+write.csv(leaderboard_data_w, "dm_crypto_weekly.csv")
+write.csv(leaderboard_data_m, "dm_crypto_monthly.csv")
+write.csv(temp_df_w, "dm_crypto_2_years_of_mmt_data_weekly.csv")
+write.csv(temp_df_m, "dm_crypto_2_years_of_mmt_data_monthly.csv")
 
 ################################################################################
 ################################### THE  END ###################################

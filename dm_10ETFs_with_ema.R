@@ -1,19 +1,10 @@
 ################################################################################
-################################### PART ONE ################################### 
-########################## DUAL MOMENTUM WITH 10 ETFS ##########################
+######################## DUAL MOMENTUM  10 ETFs VERSION ########################
 ############### ABSOLUTE MOMENTUM  MEASURED BY EMA(30) REFERENCE ###############
-################################# WEEKLY CHECK #################################
 ################################################################################
 
-# Packages ---------------------------------------------------------------------
-install.packages("quantmod")
-install.packages("tidyverse")
-install.packages("RPostgres")
-install.packages("gt")
-install.packages("reshape2")
-install.packages("ggplot2")
-
 # Libraries --------------------------------------------------------------------
+
 library(quantmod)
 library(tidyverse)
 library(dplyr)
@@ -24,6 +15,7 @@ library(ggplot2)
 library(googlesheets4)
 
 # Postgres DB connection -------------------------------------------------------
+
 my_postgr <- dbConnect(
   RPostgres::Postgres(),
   host = Sys.getenv("sql_host"),
@@ -35,11 +27,12 @@ my_postgr <- dbConnect(
 )
 
 # Getting the Data -------------------------------------------------------------
+
 start_date <- Sys.Date() - (3 * 365)
 end_date <- Sys.Date()
 etf_qts_env <- new.env()
 etf_query <- dbGetQuery(my_postgr, "SELECT * FROM etf_info;")
-yahoo_symbols <- as.vector(etf_query[["symbol_usd"]])
+yahoo_symbols <- as.vector(etf_query[["ticker"]])
 
 # daily quotes
 getSymbols(yahoo_symbols, 
@@ -72,6 +65,7 @@ monthly_closes <- na.omit(monthly_closes)
 names(monthly_closes) <- gsub(".L.Adjusted", "", names(monthly_closes))
 
 # Writing into DB (quotes) -----------------------------------------------------
+
 # Have to transform into PostgreSQL format before sending to DB
 dc_for_sql <- as.data.frame(daily_closes)
 dc_for_sql <- cbind(date = as.Date(rownames(dc_for_sql)), dc_for_sql)
@@ -95,26 +89,39 @@ if (dbExistsTable(my_postgr, "quotes_etfs_m")){
 dbWriteTable(my_postgr, "quotes_etfs_m", mc_for_sql, row.names = FALSE)
 
 # Absolute Momentum Check ------------------------------------------------------
-mm_direction <- rep(TRUE, ncol(weekly_closes))
-names(mm_direction) <- names(weekly_closes)
+
+# weekly check
+abs_mmt_state_w <- rep(TRUE, ncol(weekly_closes))
+names(abs_mmt_state_w) <- names(weekly_closes)
 for (ticker in names(weekly_closes)){
   ema30w <- EMA(weekly_closes[,ticker], n = 30)
   if (last(ema30w) < last(weekly_closes[,ticker])) {
-    mm_direction[[ticker]] <- TRUE
+    abs_mmt_state_w[[ticker]] <- TRUE
   } else {
-      mm_direction[[ticker]] <- FALSE
+    abs_mmt_state_w[[ticker]] <- FALSE
+  }
+}
+
+# monthly check
+abs_mmt_state_m <- rep(TRUE, ncol(monthly_closes))
+names(abs_mmt_state_m) <- names(monthly_closes)
+for (ticker in names(monthly_closes)){
+  ema7m <- EMA(monthly_closes[,ticker], n = 7)
+  if (last(ema7m) < last(monthly_closes[,ticker])) {
+    abs_mmt_state_m[[ticker]] <- TRUE
+  } else {
+      abs_mmt_state_m[[ticker]] <- FALSE
     }
 }
 
 # Relative Momentum Calculation ------------------------------------------------
-daily_1ym <- ROC(daily_closes, n = 252, type = "discrete") %>%  
-              na.omit() %>% "*"(100) %>% round(2)
-weekly_1ym <- ROC(weekly_closes, n = 50, type = "discrete") %>%  
-                na.omit() %>% "*"(100) %>% round(2)
-monthly_1ym <- ROC(monthly_closes, n = 12, type = "discrete") %>% 
-                 na.omit() %>% "*"(100) %>% round(2)
+
+daily_1ym <- ROC(daily_closes, n = 252, type = "discrete") %>%  na.omit()
+weekly_1ym <- ROC(weekly_closes, n = 50, type = "discrete") %>% na.omit()
+monthly_1ym <- ROC(monthly_closes, n = 12, type = "discrete") %>% na.omit()
 
 # Writing into DB (momentum) ---------------------------------------------------
+
 dm_for_sql <- as.data.frame(daily_1ym)
 dm_for_sql <- cbind(date = as.Date(rownames(dm_for_sql)), dm_for_sql)
 if (dbExistsTable(my_postgr, "momentum_etfs_d")) {
@@ -137,31 +144,74 @@ if (dbExistsTable(my_postgr, "momentum_etfs_m")) {
 dbWriteTable(my_postgr, "momentum_etfs_m", mm_for_sql, row.names = FALSE)
 
 # Connection Off ---------------------------------------------------------------
+
 dbDisconnect(my_postgr)
 
 # Leaderboard Table ------------------------------------------------------------
-temp_df <- as_tibble(weekly_1ym)
-temp_df <- temp_df[,order(temp_df[nrow(temp_df),],decreasing = TRUE)]
-temp_df <- tail(temp_df, 1)
+
+# preparing the weekly table
+temp_df_w <- as_tibble(weekly_1ym)
+temp_df_w <- temp_df_w[,order(temp_df_w[nrow(temp_df_w),],decreasing = TRUE)]
+temp_df_w <- tail(temp_df_w, 1) %>% "*"(100) %>% round(2)
 
 descriptions <- NULL
-for (ticker in names(temp_df)) {
-  description <- etf_query$full_name[etf_query$ticker_usd == ticker]
+for (ticker in names(temp_df_w)) {
+  description <- etf_query$name[etf_query$ticker_usd == ticker]
   descriptions <- append(descriptions, description)
 }
 
-leaderboard_data <- tibble(descriptions,
-                           names(temp_df),
-                           mm_direction,
-                           t(temp_df))
+leaderboard_data_w <- tibble(descriptions,
+                             names(temp_df_w),
+                             abs_mmt_state_w,
+                             t(temp_df_w))
 
-names(leaderboard_data) <- c("etf_name",
+names(leaderboard_data_w) <- c("etf_name",
+                               "USD", "Above_EMA", "Y_Mm")
+
+leaderboard_table_w <-  
+  gt(leaderboard_data_w) %>% 
+  tab_header(title = md("**ETFs Sorted By 1 Year Momentum**"), 
+             subtitle = "last 2 years of data (weekly)") %>% 
+  tab_source_note(md("_datasource: www.yahoo.com_")) %>% 
+  tab_style(style = list(cell_text(color = "#196F3D")),
+            locations = cells_body(columns = Above_EMA, 
+                                   rows = Above_EMA == TRUE)) %>% 
+  tab_style(style = list(cell_text(color = "#7B241C")),
+            locations = cells_body(columns = Above_EMA, 
+                                   rows = Above_EMA == FALSE)) %>% 
+  tab_style(style = list(cell_fill(color = "#E8F8F5"),
+                         cell_text(weight =  "bold")),
+            locations = cells_body(rows = 1)) %>% 
+  tab_style(style = cell_text(align = "right"),
+            locations = cells_source_notes()) %>%
+  cols_label(etf_name = "ETF Full Name / Description", 
+             USD = "Ticker",
+             Above_EMA = "Above EMA", 
+             Y_Mm = "1Y Mm %")
+
+# preparing the monthly table
+temp_df_m <- as_tibble(monthly_1ym)
+temp_df_m <- temp_df_m[,order(temp_df_m[nrow(temp_df_m),],decreasing = TRUE)]
+temp_df_m <- tail(temp_df_m, 1) %>% "*"(100) %>% round(2)
+
+descriptions <- NULL
+for (ticker in names(temp_df_m)) {
+  description <- etf_query$name[etf_query$ticker_usd == ticker]
+  descriptions <- append(descriptions, description)
+}
+
+leaderboard_data_m <- tibble(descriptions,
+                           names(temp_df_m),
+                           abs_mmt_state_m,
+                           t(temp_df_m))
+
+names(leaderboard_data_m) <- c("etf_name",
                              "USD", "Above_EMA", "Y_Mm")
 
-leaderboard_table <-  
-  gt(leaderboard_data) %>% 
+leaderboard_table_m <-  
+  gt(leaderboard_data_m) %>% 
   tab_header(title = md("**ETFs Sorted By 1 Year Momentum**"), 
-             subtitle = "last 2 years of data") %>% 
+             subtitle = "last 2 years of data (monthly)") %>% 
   tab_source_note(md("_datasource: www.yahoo.com_")) %>% 
   tab_style(style = list(cell_text(color = "#196F3D")),
     locations = cells_body(columns = Above_EMA, rows = Above_EMA == TRUE)) %>% 
@@ -176,21 +226,25 @@ leaderboard_table <-
              USD = "Ticker",
              Above_EMA = "Above EMA", 
              Y_Mm = "1Y Mm %")
-  
-leaderboard_table
+
+leaderboard_table_w
+leaderboard_table_m
 
 # Plot -------------------------------------------------------------------------
-temp_df <- select(wm_for_sql, -date)
-temp_df <- temp_df[,order(temp_df[nrow(temp_df),],decreasing = TRUE)]
-temp_df <- select(temp_df, 1:3)
-temp_df <- tibble(date = wm_for_sql$date, temp_df)
-temp_df <- tail(temp_df, 100)
-plot_data <- melt(temp_df, id = "date")
 
-best_3_plot <- ggplot(plot_data, aes(x = date, y = value, colour = variable)) +
+# momentum plot weekly
+temp_df_w <- select(wm_for_sql, -date)
+temp_df_w <- temp_df_w[,order(temp_df_w[nrow(temp_df_w),],decreasing = TRUE)]
+temp_df_w <- select(temp_df_w, 1:3) %>% "*"(100) %>% round(2)
+temp_df_w <- tibble(date = wm_for_sql$date, temp_df_w)
+temp_df_w <- tail(temp_df_w, 100)
+plot_data_w <- melt(temp_df_w, id = "date")
+
+best_3_plot_w <- ggplot(plot_data_w, 
+                        aes(x = date, y = value, colour = variable)) +
   geom_line() +
-  labs(title = "Top 3 ETFs With Best 1 Year Momentum",
-       subtitle = "last 2 years of data",
+  labs(title = "ETFs by the best 1 Year Momentum",
+       subtitle = "last 2 years of data (weekly)",
        caption = "datasource: www.yahoo.com",
        x = NULL,
        y = "Momentum %",
@@ -201,36 +255,39 @@ best_3_plot <- ggplot(plot_data, aes(x = date, y = value, colour = variable)) +
         plot.caption = element_text(face = "italic"), 
         aspect.ratio = 9/16)
 
-best_3_plot
+# momentum plot monthly
+temp_df_m <- select(mm_for_sql, -date)
+temp_df_m <- temp_df_m[,order(temp_df_m[nrow(temp_df_m),],decreasing = TRUE)]
+temp_df_m <- select(temp_df_m, 1:3) %>% "*"(100) %>% round(2)
+temp_df_m <- tibble(date = mm_for_sql$date, temp_df_m)
+temp_df_m <- tail(temp_df_m, 24)
+plot_data_m <- melt(temp_df_m, id = "date")
+
+best_3_plot_m <- ggplot(plot_data_m, 
+                        aes(x = date, y = value, colour = variable)) +
+  geom_line() +
+  labs(title = "ETFs by the best 1 Year Momentum",
+       subtitle = "last 2 years of data (monthly)",
+       caption = "datasource: www.yahoo.com",
+       x = NULL,
+       y = "Momentum %",
+       colour = "ETF") + 
+  theme_minimal() +
+  theme(plot.title = element_text(colour = "#3498DB", face = "bold"), 
+        plot.subtitle = element_text(colour = "#555555", face = "bold"), 
+        plot.caption = element_text(face = "italic"), 
+        aspect.ratio = 9/16)
+
+best_3_plot_w
+best_3_plot_m
 
 # CSV Export -------------------------------------------------------------------
-write.csv(leaderboard_data, "dm_etf_leaderboard.csv")
-write.csv(temp_df, "dm_etf_all_2_years_datas.csv")
 
-# Google Sheet Export ----------------------------------------------------------
-gs4_auth()
-my_gsheets <- gs4_get(Sys.getenv("file_id"))
-
-df_to_write <- leaderboard_data
-range_write(
-  my_gsheets,
-  df_to_write,
-  sheet = 1,
-  range = "one_year_momentum!A2:Z11",
-  col_names = FALSE,
-  reformat = TRUE
-)
-
-df_to_write <- wc_for_sql
-range_write(
-  my_gsheets,
-  df_to_write,
-  sheet = "chart_data",
-  range = NULL,
-  col_names = TRUE,
-  reformat = TRUE
-)
+write.csv(leaderboard_data_w, "dm_10_etfs_weekly.csv")
+write.csv(leaderboard_data_m, "dm_10_etfs_monthly.csv")
+write.csv(temp_df_w, "dm_10_etfs_2_years_of_mmt_data_weekly.csv")
+write.csv(temp_df_m, "dm_10_etfs_2_years_of_mmt_data_monthly.csv")
 
 ################################################################################
-############################### END OF  PART ONE ###############################
+################################### THE  END ###################################
 ################################################################################

@@ -42,7 +42,7 @@ getSymbols(yahoo_symbols,
            env = etf_qts_env)
 daily_closes <- do.call(merge, eapply(etf_qts_env, Ad))
 daily_closes <- na.omit(daily_closes)
-names(daily_closes) <- gsub(".L.Adjusted", "", names(daily_closes))
+names(daily_closes) <- gsub(".Adjusted", "", names(daily_closes))
 
 # weekly quotes
 getSymbols(yahoo_symbols, 
@@ -52,7 +52,7 @@ getSymbols(yahoo_symbols,
            env = etf_qts_env)
 weekly_closes <- do.call(merge, eapply(etf_qts_env, Ad))
 weekly_closes <- na.omit(weekly_closes)
-names(weekly_closes) <- gsub(".L.Adjusted", "", names(weekly_closes))
+names(weekly_closes) <- gsub(".Adjusted", "", names(weekly_closes))
 
 # monthly quotes
 getSymbols(yahoo_symbols, 
@@ -62,7 +62,7 @@ getSymbols(yahoo_symbols,
            env = etf_qts_env)
 monthly_closes <- do.call(merge, eapply(etf_qts_env, Ad))
 monthly_closes <- na.omit(monthly_closes)
-names(monthly_closes) <- gsub(".L.Adjusted", "", names(monthly_closes))
+names(monthly_closes) <- gsub(".Adjusted", "", names(monthly_closes))
 
 # Writing into DB (quotes) -----------------------------------------------------
 
@@ -157,15 +157,6 @@ for (ticker in names(temp_df_w)) {
   description <- etf_query$name[etf_query$ticker == ticker]
   descriptions <- append(descriptions, description)
 }
-
-leaderboard_data_w <- tibble(descriptions,
-                             names(temp_df_w),
-                             abs_mmt_state_w,
-                             t(temp_df_w))
-
-names(leaderboard_data_m) <- c("etf_name",
-                               "USD", "Above_EMA", "Y_Mm")
-
 
 leaderboard_data_w <- tibble(descriptions,
                              names(temp_df_w),
