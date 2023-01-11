@@ -128,50 +128,6 @@ That gives 16 combinations plus one additional for performance of an optimised b
 1. TRON
 1. Unicorn Token
 
-**Classic Dual-Momentum Case:**
-
-1. **VOO** Vanguard S&P 500 ETF
-1. **VEO** Vanguard All-World ex-US ETF
-1. **BND** Vanguard Total Bond Market Index ETF
-
-**10 ETFs from London Stock Exchange**
-
-1. **VUAA**	Vanguard S&P 500 UCITS ETF USD (acc)
-1. **CNDX**	iShares NASDAQ 100 UCITS ETF USD (acc)
-1. **VWRA**	Vanguard FTSE All-World UCITS ETF USD (acc)
-1. **IWMO**	iShares Edge MSCI World Momentum Factor UCITS ETF USD (acc)
-1. **IWQU**	iShares Edge MSCI World Quality Factor UCITS ETF USD (acc)
-1. **IWVL**	IShares Edge MSCI World Value Factor UCITS ETF USD (acc)
-1. **WSML**	iShares MSCI World Small Cap UCITS ETF USD (acc)
-1. **VFEA**	Vanguard FTSE Emerging Mkts UCITS ETF USD (acc)
-1. **IGIL**	iShares Global Inflation Lnked Govt Bonds UCITS ETF USD (acc)
-1. **IGLN**	iShares Physical Gold ETC USD (no income)
-
-**Crypto Basket**
-
-1. AAVE
-1. Cardano
-1. Cosmos
-1. Avalanche
-1. Binance Coin
-1. Bitcoin
-1. Pancake
-1. CatGirl
-1. DogeCoin
-1. PolkaDot
-1. Ethereum
-1. ChainLink
-1. LiteCoin
-1. Mana
-1. Matic
-1. NEAR
-1. PAX Gold
-1. Shiba Inu
-1. Sushi
-1. TON Coin
-1. TRON
-1. Unicorn Token
-
 # Methodology and Workflow
 
 Next few paragraphs are explanations of the code and the final workflow in each consecutive module.
@@ -249,7 +205,7 @@ I want the report to be in the form of a table and a graph. To get that I am:
   + Building the plot
   + Drawing it
 
-### Exporting CSV file.
+### Exporting CSV files.
 
 For convenience sake I added a possibility to export the data in the csv format. The csv files are very easy to import into excel if one wishes to do so.
 
@@ -561,11 +517,13 @@ If you are familiar with issue registers this one is quite different because it 
 
 8. I transformed the momentum calculation from scientific format too early. I need them only for data presentation (the last step) but in the DB it should be stored with big precision.
 
-**!! ONGOING !!**
+**Solved 2023-01-10:** Code in all files corrected.
 
 ---
 
-9. I should have put the dates in this issue register. Without them I have lost a lot of explanatory power in this notebook. I missed the point that I am not the only stakeholder of this project anymore (readers are too). From now on I am going to put opening and closing dates in here.
+9. I should have put the dates in this issue register. Without them I have lost a lot of explanatory power in this notebook. I missed the point that I am not the only stakeholder of this project anymore (readers are too).
+
+**Solution:** From now on I am going to put opening and closing dates in here.
 
 ---
 
@@ -574,10 +532,12 @@ If you are familiar with issue registers this one is quite different because it 
 
 **!! ONGOING !!**
 
+---
+
 **2023-01-03**
 11. I need to include CSV files with my database dump for those who don't want to use databases or maybe I should only just describe a table structure for the code to work?
 
-**!! ONGOING !!**
+**Solved 2023-01-11:** Files already on GitHub. File list updated.
 
 ---
 
@@ -585,7 +545,7 @@ If you are familiar with issue registers this one is quite different because it 
 
 12. There are many too many code files. I need to rewrite them in the way that one file will generate data using monthly and weekly intervals in one go.
 
-**!! ONGOING !!**
+**Solved 2023-01-11** I have rewritten the code and reduced the files by the half. File list in this document has been updated too.
 
 ---
 
@@ -602,29 +562,23 @@ If you are familiar with issue registers this one is quite different because it 
 
 *tests.R* – for testing new ideas and experimenting
 
+*dm_classic_db.csv* - what is in the database for classic dual momentum
 
-Files beneath are used for data mining (1 year momentum calculation)
+*dm_10_etfs_db.csv* - database for the 10 ETFs case
 
-*dm_classic_with_ema_m.R* – classic ETF set, absolute momt. using EMA(30), monthly interval
+*dm_crypto_db.csv* - database content for crypto case
 
-*dm_classic_with_ema_w.R* – classic ETF set, abs. momt. using EMA(30), weekly interval
 
-*dm_classic_with_zero_m.R* – classic ETF set, abs. momt. using 0, monthly interval
+**Files beneath are used for data mining (1 year momentum calculation)**
 
-*dm_classic_with_zero_w.R* – classic ETF set, abs. momt. using 0, weekly interval
+*dm_classic_with_ema.R* – classic ETF set, absolute momt. using EMA(30), weekly and  monthly interval
 
-*dm_etfs_with_ema_m.R* – 10 ETFs, abs. momt. using EMA(30), monthly interval
+*dm_classic_with_zero.R* – classic ETF set, abs. momt. using 0, weekly and  monthly interval
 
-*dm_etfs_with_ema_w.R* – 10 ETFs, abs. momt. using EMA(30), weekly interval
+*dm_etfs_with_ema.R* – 10 ETFs, abs. momt. using EMA(30), weekly and  monthly interval
 
-*dm_etfs_with_zero_m.R* – 10 ETFs, abs. momt. using 0, monthly interval
+*dm_etfs_with_zero.R* – 10 ETFs, abs. momt. using 0, weekly and  monthly interval
 
-*dm_etfs_with_zero_w.R* – 10 ETFs, abs. momt. using 0, weekly interval
+*dm_crypto_with_ema.R* – basket of crypto, abs. momt. using EMA(30), weekly and  monthly interval
 
-*dm_crypto_with_ema_m.R* – basket of crypto, abs. momt. using EMA(30), monthly interval
-
-*dm_crypto_with_ema_w.R* – basket of crypto, abs. momt. using EMA(30), weekly interval
-
-*dm_crypto_with_zero_m.R* – basket of crypto, abs. momt. using 0, monthly interval
-
-*dm_crypto_with_zero_w.R* – basket of crypto, abs. momt. using 0, weekly interval
+*dm_crypto_with_zero.R* – basket of crypto, abs. momt. using 0, weekly and monthly interval

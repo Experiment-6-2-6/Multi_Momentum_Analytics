@@ -10,23 +10,26 @@ Anyway it is going to be an interesting adventure with R and real data analysis 
 
 Aloha!
 
-# Project files description
+Project files description
 
-Analytics_Notebook.Rmd – The Project’s notebook, in depth explanation and all comments.
 project.Rproj – Rstudio Project file
-tests.R – for testing new ideas and experimenting (just ignore it)
 
-# Files beneath are used for data mining (1 year momentum calculation)
+tests.R – for testing new ideas and experimenting
 
-dm_classic_with_ema_m.R – classic ETF set, absolute momt. using EMA(30), monthly interval
-dm_classic_with_ema_w.R – classic ETF set, abs. momt. using EMA(30), weekly interval
-dm_classic_with_zero_m.R – classic ETF set, abs. momt. using 0, monthly interval
-dm_classic_with_zero_w.R – classic ETF set, abs. momt. using 0, weekly interval
-dm_etfs_with_ema_m.R – 10 ETFs, abs. momt. using EMA(30), monthly interval
-dm_etfs_with_ema_w.R – 10 ETFs, abs. momt. using EMA(30), weekly interval
-dm_etfs_with_zero_m.R – 10 ETFs, abs. momt. using 0, monthly interval
-dm_etfs_with_zero_w.R – 10 ETFs, abs. momt. using 0, weekly interval
-dm_crypto_with_ema_m.R – crypto bascet, abs. momt. using EMA(30), monthly interval
-dm_crypto_with_ema_w.R – crypto bascet, abs. momt. using EMA(30), weekly interval
-dm_crypto_with_zero_m.R – crypto bascet, abs. momt. using 0, monthly interval
-dm_crypto_with_zero_w.R – crypto bascet, abs. momt. using 0, weekly interval
+dm_classic_db.csv - what is in the database for classic dual momentum
+
+dm_10_etfs_db.csv - database for the 10 ETFs case
+
+dm_crypto_db.csv - database content for crypto case
+
+dm_classic_with_ema.R – classic ETF set, absolute momt. using EMA(30), weekly and  monthly interval
+
+dm_classic_with_zero.R – classic ETF set, abs. momt. using 0, weekly and  monthly interval
+
+dm_etfs_with_ema.R – 10 ETFs, abs. momt. using EMA(30), weekly and  monthly interval
+
+dm_etfs_with_zero.R – 10 ETFs, abs. momt. using 0, weekly and  monthly interval
+
+dm_crypto_with_ema.R – basket of crypto, abs. momt. using EMA(30), weekly and  monthly interval
+
+dm_crypto_with_zero.R – basket of crypto, abs. momt. using 0, weekly and monthly interval
