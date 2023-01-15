@@ -88,13 +88,19 @@ if (dbExistsTable(my_postgr, "quotes_crp_m")){
 }
 dbWriteTable(my_postgr, "quotes_crp_m", mc_for_sql, row.names = FALSE)
 
+# Relative Momentum Calculation ------------------------------------------------
+
+daily_1ym <- ROC(daily_closes, n = 252, type = "discrete") %>%  na.omit()
+weekly_1ym <- ROC(weekly_closes, n = 50, type = "discrete") %>%  na.omit()
+monthly_1ym <- ROC(monthly_closes, n = 12, type = "discrete") %>% na.omit()
+
 # Absolute Momentum Check ------------------------------------------------------
 
 # weekly check
 abs_mmt_state_w <- rep(TRUE, ncol(weekly_closes))
 names(abs_mmt_state_w) <- names(weekly_closes)
 for (ticker in names(weekly_closes)){
-  if (last(weekly_1ym) > 0) {
+  if (last(weekly_1ym[,ticker]) > 0) {
     abs_mmt_state_w[[ticker]] <- TRUE
   } else {
     abs_mmt_state_w[[ticker]] <- FALSE
@@ -105,18 +111,12 @@ for (ticker in names(weekly_closes)){
 abs_mmt_state_m <- rep(TRUE, ncol(monthly_closes))
 names(abs_mmt_state_m) <- names(monthly_closes)
 for (ticker in names(monthly_closes)){
-  if (last(monthly_1ym) > 0) {
+  if (last(monthly_1ym[, ticker]) > 0) {
     abs_mmt_state_m[[ticker]] <- TRUE
   } else {
     abs_mmt_state_m[[ticker]] <- FALSE
   }
 }
-
-# Relative Momentum Calculation ------------------------------------------------
-
-daily_1ym <- ROC(daily_closes, n = 252, type = "discrete") %>%  na.omit()
-weekly_1ym <- ROC(weekly_closes, n = 50, type = "discrete") %>%  na.omit()
-monthly_1ym <- ROC(monthly_closes, n = 12, type = "discrete") %>% na.omit()
 
 # Writing into DB (momentum) ---------------------------------------------------
 
@@ -147,8 +147,6 @@ dbDisconnect(my_postgr)
 
 # Leaderboard Table ------------------------------------------------------------
 
-# Leaderboard Table ------------------------------------------------------------
-
 # preparing the weekly table
 temp_df_w <- as_tibble(weekly_1ym)
 temp_df_w <- temp_df_w[,order(temp_df_w[nrow(temp_df_w),],decreasing = TRUE)]
@@ -160,9 +158,15 @@ for (ticker in names(temp_df_w)) {
   descriptions <- append(descriptions, description)
 }
 
+Above_0_w <- rep(TRUE, ncol(temp_df_w))
+names(Above_0_w) <- names((temp_df_w))
+for (ticker in names(temp_df_w)){
+  Above_0_w[ticker] <- abs_mmt_state_w[ticker]
+}
+
 leaderboard_data_w <- tibble(descriptions,
                              names(temp_df_w),
-                             abs_mmt_state_w,
+                             Above_0_w,
                              t(temp_df_w))
 
 names(leaderboard_data_w) <- c("crp_name",
@@ -200,9 +204,15 @@ for (ticker in names(temp_df_m)) {
   descriptions <- append(descriptions, description)
 }
 
+Above_0_m <- rep(TRUE, ncol(temp_df_m))
+names(Above_0_m) <- names((temp_df_m))
+for (ticker in names(temp_df_m)){
+  Above_0_m[ticker] <- abs_mmt_state_m[ticker]
+}
+
 leaderboard_data_m <- tibble(descriptions,
                              names(temp_df_m),
-                             abs_mmt_state_m,
+                             Above_0_m,
                              t(temp_df_m))
 
 names(leaderboard_data_m) <- c("crp_name",
@@ -243,6 +253,7 @@ plot_data_w <- melt(temp_df_w, id = "date")
 best_3_plot_w <- ggplot(plot_data_w, 
                         aes(x = date, y = value, colour = variable)) +
   geom_line() +
+  geom_hline(yintercept = 0) + 
   labs(title = "Cryptos by the best 1 Year Momentum",
        subtitle = "last 2 years of data (weekly)",
        caption = "Datasource: CoinMarketCap via Yahoo Finance",
@@ -266,6 +277,7 @@ plot_data_m <- melt(temp_df_m, id = "date")
 best_3_plot_m <- ggplot(plot_data_m, 
                         aes(x = date, y = value, colour = variable)) +
   geom_line() +
+  geom_hline(yintercept = 0) + 
   labs(title = "Cryptos by the best 1 Year Momentum",
        subtitle = "last 2 years of data (monthly)",
        caption = "Datasource: CoinMarketCap via Yahoo Finance",

@@ -160,9 +160,15 @@ for (ticker in names(temp_df_w)) {
   descriptions <- append(descriptions, description)
 }
 
+Above_ema_w <- rep(TRUE, ncol(temp_df_w))
+names(Above_ema_w) <- names((temp_df_w))
+for (ticker in names(temp_df_w)){
+  Above_ema_w[ticker] <- abs_mmt_state_w[ticker]
+}
+
 leaderboard_data_w <- tibble(descriptions,
                              names(temp_df_w),
-                             abs_mmt_state_w,
+                             Above_ema_w,
                              t(temp_df_w))
 
 names(leaderboard_data_w) <- c("etf_name",
@@ -200,10 +206,16 @@ for (ticker in names(temp_df_m)) {
   descriptions <- append(descriptions, description)
 }
 
+Above_ema_m <- rep(TRUE, ncol(temp_df_m))
+names(Above_ema_m) <- names((temp_df_m))
+for (ticker in names(temp_df_m)){
+  Above_ema_m[ticker] <- abs_mmt_state_m[ticker]
+}
+
 leaderboard_data_m <- tibble(descriptions,
-                           names(temp_df_m),
-                           abs_mmt_state_m,
-                           t(temp_df_m))
+                             names(temp_df_m),
+                             Above_ema_m,
+                             t(temp_df_m))
 
 names(leaderboard_data_m) <- c("etf_name",
                              "USD", "Above_EMA", "Y_Mm")

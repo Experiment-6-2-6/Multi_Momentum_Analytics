@@ -1,6 +1,10 @@
+# Preparing DF for performance comparison module
+# Let it be in a long format
+# ticker, date, price, mmt value, mmt T/F
+
 library(quantmod)
+library(tidyverse)
+library(dplyr)
+library(RPostgres)
+library(gt)
 
-coin <- getSymbols("BTC-USD", from = Sys.Date() - 365, to = Sys.Date(), 
-           periodicity = "daily", auto.assign = FALSE)
-
-head(coin, 3)

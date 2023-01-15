@@ -113,7 +113,7 @@ That gives 16 combinations plus one additional for performance of an optimised b
 1. **BNB** - Binance Coin
 1. **BTC** - Bitcoin
 1. **CAKE** - PancakeSwap Pancake Token
-1. **CATGIRL** - CatGirl
+1. ~~**CATGIRL** - CatGirl~~ Removed 2023-01-15 - too small quotes
 1. **DOGE** - DogeCoin
 1. **DOT** - PolkaDot Token
 1. **ETH** - Ethereum
@@ -125,11 +125,11 @@ That gives 16 combinations plus one additional for performance of an optimised b
 1. **NEAR** - NEAR Protocol
 1. **PAXG** - PAX Gold
 1. **RNDR** - Render Token
-1. **SHIB** - Shiba Inu
+1. ~~**SHIB** - Shiba Inu~~ Removed 2023-01-15 - too small quotes
 1. **SUSHI** - SushiSwap Token
 1. **TON** - TON Coin (Telegram)
 1. **TRX** - TRON (BitTorrent)
-1. **UNI** - UniSwap Unicorn Token
+1. ~~**UNI** - UniSwap Unicorn Token~~ Removed 2023-01-15 - unrelaible data
 
 # Methodology and Workflow
 
@@ -403,9 +403,15 @@ for (ticker in names(temp_df_w)) {
   descriptions <- append(descriptions, description)
 }
 
+Above_ema_w <- rep(TRUE, ncol(temp_df_w))
+names(Above_ema_w) <- names((temp_df_w))
+for (ticker in names(temp_df_w)){
+  Above_ema_w[ticker] <- abs_mmt_state_w[ticker]
+}
+
 leaderboard_data_w <- tibble(descriptions,
                              names(temp_df_w),
-                             abs_mmt_state_w,
+                             Above_ema_w,
                              t(temp_df_w))
 
 names(leaderboard_data_w) <- c("etf_name",
@@ -443,9 +449,15 @@ for (ticker in names(temp_df_m)) {
   descriptions <- append(descriptions, description)
 }
 
+Above_ema_m <- rep(TRUE, ncol(temp_df_m))
+names(Above_ema_m) <- names((temp_df_m))
+for (ticker in names(temp_df_m)){
+  Above_ema_m[ticker] <- abs_mmt_state_m[ticker]
+}
+
 leaderboard_data_m <- tibble(descriptions,
                            names(temp_df_m),
-                           abs_mmt_state_m,
+                           Above_ema_m,
                            t(temp_df_m))
 
 names(leaderboard_data_m) <- c("etf_name",
@@ -488,6 +500,7 @@ plot_data_w <- melt(temp_df_w, id = "date")
 best_3_plot_w <- ggplot(plot_data_w, 
                         aes(x = date, y = value, colour = variable)) +
   geom_line() +
+  geom_hline(yintercept = 0) + 
   labs(title = "ETFs by the best 1 Year Momentum",
        subtitle = "last 2 years of data (weekly)",
        caption = "datasource: www.yahoo.com",
@@ -511,6 +524,7 @@ plot_data_m <- melt(temp_df_m, id = "date")
 best_3_plot_m <- ggplot(plot_data_m, 
                         aes(x = date, y = value, colour = variable)) +
   geom_line() +
+  geom_hline(yintercept = 0) + 
   labs(title = "ETFs by the best 1 Year Momentum",
        subtitle = "last 2 years of data (monthly)",
        caption = "datasource: www.yahoo.com",
@@ -578,67 +592,89 @@ If you are familiar with issue registers this one is quite different because it 
 1. I need to hide my credentials somehow to not commit them to the public by accident.
 2. There are big differences in how Google Colab and RStudio execute code. I need to build two versions of the code.
 
-**Solution:** I am going to use version control only in RStudio (connect with GitHub) and I will share my Google Colab only with people I trust.
+**Solved**
+
+I am going to use version control only in RStudio (connect with GitHub) and I will share my Google Colab only with people I trust.
 
 ---
 
 3. There are going to be too many source files to keep them in Colab.
 
-**Solution:** After consideration, I think that there is no real need to keep them in Colab. I am going to put a link to my GitHub repository for those who are interested.
+**Solved**
+
+After consideration, I think that there is no real need to keep them in Colab. I am going to put a link to my GitHub repository for those who are interested.
 
 ---
 
 4. Is it really necessary to let readers interact with my data host?
 
-**Solution:** No. But without that the code will lose a lot of its demonstrative power (to show my skills) and I don't think that the customers will abuse the database. Anyway I can always disable the connection. Risks to benefits in costs of keeping the feature.
+**Solved**
+
+No. But without that the code will lose a lot of its demonstrative power (to show my skills) and I don't think that the customers will abuse the database. Anyway I can always disable the connection. Risks to benefits in costs of keeping the feature.
 
 ---
 
 5. After finishing the code I can easily gather data for all 16 cases of Double-Momentum use. Now I can focus on the next step but which one?
 
-**Solution:** I think that creating a code for portfolio optimization will be easies from the remaining tasks and it allows me to get the last (17th) set of data for comparison. So the next step will be module III.
+**Solved**
+
+I think that creating a code for portfolio optimization will be easies from the remaining tasks and it allows me to get the last (17th) set of data for comparison. So the next step will be module III.
 
 ---
 
 6. New Year's Day.
 
-**Solution:** Issue solved but I need a day of rest. (Current timestamp 2023-01-01 00:47:22) 😃🥂
+**Solved**
+
+Issue solved but I need a day of rest. (Current timestamp 2023-01-01 00:47:22) 😃🥂
 
 ---
 
 7. There is a problem connecting to the DB. It works in Google Colad but fails in RStudio. It demands the use of SSL but when I put “sslmode = ‘require’” it crashes the environment in RStudio.
 
-**Solution:** Switched from RPostgreSQL to RPostgres library. It allows SSL without any problem.
+**Solved**
+
+Switched from RPostgreSQL to RPostgres library. It allows SSL without any problem.
 
 ---
 
 8. I transformed the momentum calculation from scientific format too early. I need them only for data presentation (the last step) but in the DB it should be stored with big precision.
 
-**Solution [2023-01-10]:** Code in all files corrected.
+**Solved [2023-01-10]**
+
+Code in all files corrected.
 
 ---
 
 9. I should have put the dates in this issue register. Without them I have lost a lot of explanatory power in this notebook. I missed the point that I am not the only stakeholder of this project anymore (readers are too).
 
-**Solution:** From now on I am going to put opening and closing dates in here.
+**Solved**
+
+From now on I am going to put opening and closing dates in here.
 
 ---
 
 **2023-01-03**
+
 10. I forgot to save the calculation results for absolute momentum. I am going to need them in Module II for backtesting.
 
-2023-01-12: I think I need to do this in a different file. I have already put a lot into the "Module I" and I don't want to put all the work (and code) into one file. It can unnecessarily complicate future maintenance.
+2023-01-12
+I think I need to do this in a different file. I have already put a lot into the "Module I" and I don't want to put all the work (and code) into one file. It can unnecessarily complicate future maintenance.
 
-**Solution [2023-01-14]:** Decision. I am going to keep data mining together
- so I will build datatables for methods comparison. It will probably be something like: Asset name, Date, Quotation, Absolute Momentum (T/F), Momentum levels for comparison.
+**Solved [2023-01-14]**
+
+Decision. I am going to keep data mining together so I will build datatables for methods comparison. It will probably be something like: Asset name, Date, Quotation, Absolute Momentum (T/F), Momentum levels for comparison. (Long format)
 
 ---
 
 
 **2023-01-03**
+
 11. I need to include CSV files with my database dump for those who don't want to use databases... or maybe I should only just describe a table structure for the code to work?
 
-**Solution [2023-01-11]:** Files already on GitHub. File list updated.
+**Solved [2023-01-11]**
+
+Files already on GitHub. File list updated.
 
 ---
 
@@ -646,7 +682,9 @@ If you are familiar with issue registers this one is quite different because it 
 
 12. There are many too many code files. I need to rewrite them in the way that one file will generate data using monthly and weekly intervals in one go.
 
-**Solution [2023-01-11]:** I have rewritten the code and reduced the files by the half. File list in this document has been updated too.
+**Solved [2023-01-11]**
+
+I have rewritten the code and reduced the files by the half. File list in this document has been updated too.
 
 ---
 
@@ -654,7 +692,19 @@ If you are familiar with issue registers this one is quite different because it 
 
 13. In the files for crypto the momentum calculations for UNI-USD are absurdly high. It looks like there is some bug in data but I need to take a closer took, just in case.
 
-**!!! TO DO !!!**
+**Solved [2023-01-15]**
+
+I have discovered that there are 3 tokens which have problems with quotation. I have already more than 20 cryptos on the list so I am going to remove the "trouble makers". Reason: I don't want to loose a tone of time in a search of reliable data source and 20 cases is enough for me.
+
+---
+
+**2023-01-15**
+
+14. What a blunder! I have just discovered that I have one misaligned column in my leader's table. I have sorted all assets by the momentum but I had forgotten to re-order  the absolute momentum calculations to match the rest. Oof!
+
+**Solved [2023-01-15]**
+
+All code files corrected.
 
 ---
 

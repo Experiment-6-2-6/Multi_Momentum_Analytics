@@ -88,6 +88,12 @@ if (dbExistsTable(my_postgr, "quotes_dm_m")){
 }
 dbWriteTable(my_postgr, "quotes_dm_m", mc_for_sql, row.names = FALSE)
 
+# Relative Momentum Calculation ------------------------------------------------
+
+daily_1ym <- ROC(daily_closes, n = 252, type = "discrete") %>%  na.omit()
+weekly_1ym <- ROC(weekly_closes, n = 50, type = "discrete") %>%  na.omit()
+monthly_1ym <- ROC(monthly_closes, n = 12, type = "discrete") %>% na.omit()
+
 # Absolute Momentum Check ------------------------------------------------------
 
 # weekly check
@@ -111,12 +117,6 @@ for (ticker in names(monthly_closes)){
     abs_mmt_state_m[[ticker]] <- FALSE
   }
 }
-
-# Relative Momentum Calculation ------------------------------------------------
-
-daily_1ym <- ROC(daily_closes, n = 252, type = "discrete") %>%  na.omit()
-weekly_1ym <- ROC(weekly_closes, n = 50, type = "discrete") %>%  na.omit()
-monthly_1ym <- ROC(monthly_closes, n = 12, type = "discrete") %>% na.omit()
 
 # Writing into DB (momentum) ---------------------------------------------------
 
@@ -157,10 +157,15 @@ for (ticker in names(temp_df_w)) {
   description <- etf_query$name[etf_query$ticker == ticker]
   descriptions <- append(descriptions, description)
 }
+Above_0_w <- rep(TRUE, ncol(temp_df_w))
+names(Above_0_w) <- names((temp_df_w))
+for (ticker in names(temp_df_w)){
+  Above_0_w[ticker] <- abs_mmt_state_w[ticker]
+}
 
 leaderboard_data_w <- tibble(descriptions,
                              names(temp_df_w),
-                             abs_mmt_state_w,
+                             Above_0_w,
                              t(temp_df_w))
 
 names(leaderboard_data_w) <- c("etf_name",
@@ -198,9 +203,15 @@ for (ticker in names(temp_df_m)) {
   descriptions <- append(descriptions, description)
 }
 
+Above_0_m <- rep(TRUE, ncol(temp_df_m))
+names(Above_0_m) <- names((temp_df_m))
+for (ticker in names(temp_df_m)){
+  Above_0_m[ticker] <- abs_mmt_state_m[ticker]
+}
+
 leaderboard_data_m <- tibble(descriptions,
                              names(temp_df_m),
-                             abs_mmt_state_m,
+                             Above_0_m,
                              t(temp_df_m))
 
 names(leaderboard_data_m) <- c("etf_name",
