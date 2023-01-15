@@ -30,39 +30,39 @@ my_postgr <- dbConnect(
 
 start_date <- Sys.Date() - (3 * 365)
 end_date <- Sys.Date()
-etf_qts_env <- new.env()
-etf_query <- dbGetQuery(my_postgr, "SELECT * FROM crypto_info;")
-yahoo_symbols <- as.vector(etf_query[["ticker"]])
+crp_qts_env <- new.env()
+crp_query <- dbGetQuery(my_postgr, "SELECT * FROM crypto_info;")
+yahoo_symbols <- as.vector(crp_query[["ticker"]])
 
 # daily quotes
 getSymbols(yahoo_symbols, 
            from = start_date, 
            to = end_date, 
            periodicity = "daily",
-           env = etf_qts_env)
-daily_closes <- do.call(merge, eapply(etf_qts_env, Ad))
+           env = crp_qts_env)
+daily_closes <- do.call(merge, eapply(crp_qts_env, Ad))
 daily_closes <- na.omit(daily_closes)
-names(daily_closes) <- gsub("-USD.Adjusted", "", names(daily_closes))
+names(daily_closes) <- gsub(".USD.Adjusted", "", names(daily_closes))
 
 # weekly quotes
 getSymbols(yahoo_symbols, 
            from = start_date, 
            to = end_date, 
            periodicity = "weekly",
-           env = etf_qts_env)
-weekly_closes <- do.call(merge, eapply(etf_qts_env, Ad))
+           env = crp_qts_env)
+weekly_closes <- do.call(merge, eapply(crp_qts_env, Ad))
 weekly_closes <- na.omit(weekly_closes)
-names(weekly_closes) <- gsub("-USD.Adjusted", "", names(weekly_closes))
+names(weekly_closes) <- gsub(".USD.Adjusted", "", names(weekly_closes))
 
 # monthly quotes
 getSymbols(yahoo_symbols, 
            from = start_date, 
            to = end_date, 
            periodicity = "monthly",
-           env = etf_qts_env)
-monthly_closes <- do.call(merge, eapply(etf_qts_env, Ad))
+           env = crp_qts_env)
+monthly_closes <- do.call(merge, eapply(crp_qts_env, Ad))
 monthly_closes <- na.omit(monthly_closes)
-names(monthly_closes) <- gsub("-USD.Adjusted", "", names(monthly_closes))
+names(monthly_closes) <- gsub(".USD.Adjusted", "", names(monthly_closes))
 
 # Writing into DB (quotes) -----------------------------------------------------
 
@@ -156,7 +156,7 @@ temp_df_w <- tail(temp_df_w, 1) %>% "*"(100) %>% round(2)
 
 descriptions <- NULL
 for (ticker in names(temp_df_w)) {
-  description <- etf_query$name[etf_query$ticker == paste0(ticker, "-USD")]
+  description <- crp_query$name[crp_query$ticker == paste0(ticker, "-USD")]
   descriptions <- append(descriptions, description)
 }
 
@@ -165,7 +165,7 @@ leaderboard_data_w <- tibble(descriptions,
                              abs_mmt_state_w,
                              t(temp_df_w))
 
-names(leaderboard_data_w) <- c("etf_name",
+names(leaderboard_data_w) <- c("crp_name",
                                "USD", "Above_EMA", "Y_Mm")
 
 leaderboard_table_w <-  
@@ -184,7 +184,7 @@ leaderboard_table_w <-
             locations = cells_body(rows = 1)) %>% 
   tab_style(style = cell_text(align = "right"),
             locations = cells_source_notes()) %>%
-  cols_label(etf_name = "ETF Full Name / Description", 
+  cols_label(crp_name = "Crypto Full Name / Description", 
              USD = "Ticker",
              Above_EMA = "Above EMA", 
              Y_Mm = "1Y Mm %")
@@ -196,7 +196,7 @@ temp_df_m <- tail(temp_df_m, 1) %>% "*"(100) %>% round(2)
 
 descriptions <- NULL
 for (ticker in names(temp_df_m)) {
-  description <- etf_query$name[etf_query$ticker == paste0(ticker, "-USD")]
+  description <- crp_query$name[crp_query$ticker == paste0(ticker, "-USD")]
   descriptions <- append(descriptions, description)
 }
 
@@ -205,7 +205,7 @@ leaderboard_data_m <- tibble(descriptions,
                            abs_mmt_state_m,
                            t(temp_df_m))
 
-names(leaderboard_data_m) <- c("etf_name",
+names(leaderboard_data_m) <- c("crp_name",
                              "USD", "Above_EMA", "Y_Mm")
 
 leaderboard_table_m <-  
@@ -222,7 +222,7 @@ leaderboard_table_m <-
     locations = cells_body(rows = 1)) %>% 
   tab_style(style = cell_text(align = "right"),
     locations = cells_source_notes()) %>%
-  cols_label(etf_name = "ETF Full Name / Description", 
+  cols_label(crp_name = "Crypto Full Name / Description", 
              USD = "Ticker",
              Above_EMA = "Above EMA", 
              Y_Mm = "1Y Mm %")
@@ -245,10 +245,10 @@ best_3_plot_w <- ggplot(plot_data_w,
   geom_line() +
   labs(title = "Cryptos by the best 1 Year Momentum",
        subtitle = "last 2 years of data (weekly)",
-       caption = "_Datasource: CoinMarketCap via Yahoo Finance_",
+       caption = "Datasource: CoinMarketCap via Yahoo Finance",
        x = NULL,
        y = "Momentum %",
-       colour = "ETF") + 
+       colour = "Token") + 
   theme_minimal() +
   theme(plot.title = element_text(colour = "#3498DB", face = "bold"), 
         plot.subtitle = element_text(colour = "#555555", face = "bold"), 
@@ -268,10 +268,10 @@ best_3_plot_m <- ggplot(plot_data_m,
   geom_line() +
   labs(title = "Cryptos by the best 1 Year Momentum",
        subtitle = "last 2 years of data (monthly)",
-       caption = "_Datasource: CoinMarketCap via Yahoo Finance_",
+       caption = "Datasource: CoinMarketCap via Yahoo Finance",
        x = NULL,
        y = "Momentum %",
-       colour = "ETF") + 
+       colour = "Token") + 
   theme_minimal() +
   theme(plot.title = element_text(colour = "#3498DB", face = "bold"), 
         plot.subtitle = element_text(colour = "#555555", face = "bold"), 

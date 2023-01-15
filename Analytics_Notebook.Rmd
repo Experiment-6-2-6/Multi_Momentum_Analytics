@@ -103,36 +103,39 @@ That gives 16 combinations plus one additional for performance of an optimised b
 1. **IGIL**	iShares Global Inflation Linked Govt Bonds UCITS ETF USD (acc)
 1. **IGLN**	iShares Physical Gold ETC USD (no income)
 
-**Crypto Basket**
+**Crypto Set**
 
-1. AAVE
-1. Cardano
-1. Cosmos
-1. Avalanche
-1. Binance Coin
-1. Bitcoin
-1. Pancake
-1. CatGirl
-1. DogeCoin
-1. PolkaDot
-1. Ethereum
-1. ChainLink
-1. LiteCoin
-1. Mana
-1. Matic
-1. NEAR
-1. PAX Gold
-1. Shiba Inu
-1. Sushi
-1. TON Coin
-1. TRON
-1. Unicorn Token
+1. **AAVE** - AAVE Liquidity Protocol
+1. **ADA**  - Cardano Token
+1. **AGIX** -  SingularityNET Token
+1. **ATOM** - Cosmos Network Token
+1. **AVAX** - Avalanche
+1. **BNB** - Binance Coin
+1. **BTC** - Bitcoin
+1. **CAKE** - PancakeSwap Pancake Token
+1. **CATGIRL** - CatGirl
+1. **DOGE** - DogeCoin
+1. **DOT** - PolkaDot Token
+1. **ETH** - Ethereum
+1. **FIL** - FileCoin
+1. **LINK** - ChainLink Token
+1. **LTC** - LiteCoin
+1. **MANA** - Decentraland
+1. **MATIC** - Poligon Token
+1. **NEAR** - NEAR Protocol
+1. **PAXG** - PAX Gold
+1. **RNDR** - Render Token
+1. **SHIB** - Shiba Inu
+1. **SUSHI** - SushiSwap Token
+1. **TON** - TON Coin (Telegram)
+1. **TRX** - TRON (BitTorrent)
+1. **UNI** - UniSwap Unicorn Token
 
 # Methodology and Workflow
 
-Next few paragraphs are explanations of the code and the final workflow in each consecutive module.
+Next few paragraphs are explanations of the **final version** of the code and the workflow in **each single, consecutive** module.
  
-If you want to understand how the project is going and what problems and ideas I have (had) it can be better if you first read the "Issue Register" as it is an index of all problems, issues, ideas, changes and it is a description of the workflow in the project as a whole. 
+If you want to understand what kind of problems and ideas I have (had) it can be better if you first read the "Issue Register" as it is a chronological index of all problems, issues, ideas, changes and it is a description of the the **project as a whole**. 
 
 ## Module One: Data Mining
 
@@ -224,17 +227,9 @@ The example output shown here uses:
 * absolute momentum judged by EMA(30)
 * checking / rebalancing period of a month
 
-```{r, label = 'packages', echo = TRUE, eval = FALSE}
-# Packages ---------------------------------------------------------------------
-install.packages("quantmod")
-install.packages("tidyverse")
-install.packages("RPostgres")
-install.packages("gt")
-install.packages("reshape2")
-install.packages("ggplot2")
-```
 ```{r, 'libraries', echo = TRUE, message = FALSE, warning = FALSE}
 # Libraries --------------------------------------------------------------------
+
 library(quantmod)
 library(tidyverse)
 library(dplyr)
@@ -243,10 +238,12 @@ library(gt)
 library(reshape2)
 library(ggplot2)
 library(googlesheets4)
+
 ```
 ```{r, 'Connection-On', echo = TRUE, message = FALSE, warning = FALSE}
 
 # Postgres DB connection -------------------------------------------------------
+
 my_postgr <- dbConnect(
   RPostgres::Postgres(),
   host = Sys.getenv("sql_host"),
@@ -256,14 +253,17 @@ my_postgr <- dbConnect(
   port = 5432,
   sslmode = "require"
 )
+
+
 ```
-```{r, 'Getting-Data', echo = TRUE, results = FALSE}
+```{r, 'Getting-Data', echo = TRUE, message = FALSE, warning = FALSE}
 # Getting the Data -------------------------------------------------------------
+
 start_date <- Sys.Date() - (3 * 365)
 end_date <- Sys.Date()
 etf_qts_env <- new.env()
 etf_query <- dbGetQuery(my_postgr, "SELECT * FROM etf_info;")
-yahoo_symbols <- as.vector(etf_query[["symbol_usd"]])
+yahoo_symbols <- as.vector(etf_query[["ticker"]])
 
 # daily quotes
 getSymbols(yahoo_symbols, 
@@ -294,9 +294,11 @@ getSymbols(yahoo_symbols,
 monthly_closes <- do.call(merge, eapply(etf_qts_env, Ad))
 monthly_closes <- na.omit(monthly_closes)
 names(monthly_closes) <- gsub(".L.Adjusted", "", names(monthly_closes))
+
 ```
 ```{r, 'Quotes-to-DB', echo = TRUE, message = FALSE, warning = FALSE}
 # Writing into DB (quotes) -----------------------------------------------------
+
 # Have to transform into PostgreSQL format before sending to DB
 dc_for_sql <- as.data.frame(daily_closes)
 dc_for_sql <- cbind(date = as.Date(rownames(dc_for_sql)), dc_for_sql)
@@ -318,31 +320,47 @@ if (dbExistsTable(my_postgr, "quotes_etfs_m")){
   dbRemoveTable(my_postgr, "quotes_etfs_m")
 }
 dbWriteTable(my_postgr, "quotes_etfs_m", mc_for_sql, row.names = FALSE)
+
 ```
 ```{r, 'Absolute-Mmt', echo = TRUE, message = FALSE, warning = FALSE}
 # Absolute Momentum Check ------------------------------------------------------
-mm_direction <- rep(TRUE, ncol(weekly_closes))
-names(mm_direction) <- names(weekly_closes)
+
+# weekly check
+abs_mmt_state_w <- rep(TRUE, ncol(weekly_closes))
+names(abs_mmt_state_w) <- names(weekly_closes)
 for (ticker in names(weekly_closes)){
   ema30w <- EMA(weekly_closes[,ticker], n = 30)
   if (last(ema30w) < last(weekly_closes[,ticker])) {
-    mm_direction[[ticker]] <- TRUE
+    abs_mmt_state_w[[ticker]] <- TRUE
   } else {
-      mm_direction[[ticker]] <- FALSE
+    abs_mmt_state_w[[ticker]] <- FALSE
+  }
+}
+
+# monthly check
+abs_mmt_state_m <- rep(TRUE, ncol(monthly_closes))
+names(abs_mmt_state_m) <- names(monthly_closes)
+for (ticker in names(monthly_closes)){
+  ema7m <- EMA(monthly_closes[,ticker], n = 7)
+  if (last(ema7m) < last(monthly_closes[,ticker])) {
+    abs_mmt_state_m[[ticker]] <- TRUE
+  } else {
+      abs_mmt_state_m[[ticker]] <- FALSE
     }
 }
+
 ```
 ```{r, 'Relative-Mmt', echo = TRUE, message = FALSE, warning = FALSE}
 # Relative Momentum Calculation ------------------------------------------------
-daily_1ym <- ROC(daily_closes, n = 252, type = "discrete") %>%  
-              na.omit() %>% "*"(100) %>% round(2)
-weekly_1ym <- ROC(weekly_closes, n = 50, type = "discrete") %>%  
-                na.omit() %>% "*"(100) %>% round(2)
-monthly_1ym <- ROC(monthly_closes, n = 12, type = "discrete") %>% 
-                 na.omit() %>% "*"(100) %>% round(2)
+
+daily_1ym <- ROC(daily_closes, n = 252, type = "discrete") %>%  na.omit()
+weekly_1ym <- ROC(weekly_closes, n = 50, type = "discrete") %>% na.omit()
+monthly_1ym <- ROC(monthly_closes, n = 12, type = "discrete") %>% na.omit()
+
 ```
 ```{r, 'Momentum-to-DB', echo = TRUE, message = FALSE, warning = FALSE}
 # Writing into DB (momentum) ---------------------------------------------------
+
 dm_for_sql <- as.data.frame(daily_1ym)
 dm_for_sql <- cbind(date = as.Date(rownames(dm_for_sql)), dm_for_sql)
 if (dbExistsTable(my_postgr, "momentum_etfs_d")) {
@@ -363,35 +381,80 @@ if (dbExistsTable(my_postgr, "momentum_etfs_m")) {
   dbRemoveTable(my_postgr, "momentum_etfs_m")
 }
 dbWriteTable(my_postgr, "momentum_etfs_m", mm_for_sql, row.names = FALSE)
+
 ```
 ```{r, 'Connection-Off', echo = TRUE, message = FALSE, warning = FALSE}
 # Connection Off ---------------------------------------------------------------
+
 dbDisconnect(my_postgr)
+
 ```
 ```{r, 'Table', echo = TRUE, message = FALSE, warning = FALSE}
 # Leaderboard Table ------------------------------------------------------------
-temp_df <- as_tibble(monthly_1ym)
-temp_df <- temp_df[,order(temp_df[nrow(temp_df),],decreasing = TRUE)]
-temp_df <- tail(temp_df, 1)
+
+# preparing the weekly table
+temp_df_w <- as_tibble(weekly_1ym)
+temp_df_w <- temp_df_w[,order(temp_df_w[nrow(temp_df_w),],decreasing = TRUE)]
+temp_df_w <- tail(temp_df_w, 1) %>% "*"(100) %>% round(2)
 
 descriptions <- NULL
-for (ticker in names(temp_df)) {
-  description <- etf_query$full_name[etf_query$ticker_usd == ticker]
+for (ticker in names(temp_df_w)) {
+  description <- etf_query$name[etf_query$ticker_usd == ticker]
   descriptions <- append(descriptions, description)
 }
 
-leaderboard_data <- tibble(descriptions,
-                           names(temp_df),
-                           mm_direction,
-                           t(temp_df))
+leaderboard_data_w <- tibble(descriptions,
+                             names(temp_df_w),
+                             abs_mmt_state_w,
+                             t(temp_df_w))
 
-names(leaderboard_data) <- c("etf_name",
+names(leaderboard_data_w) <- c("etf_name",
+                               "USD", "Above_EMA", "Y_Mm")
+
+leaderboard_table_w <-  
+  gt(leaderboard_data_w) %>% 
+  tab_header(title = md("**ETFs Sorted By 1 Year Momentum**"), 
+             subtitle = "last 2 years of data (weekly)") %>% 
+  tab_source_note(md("_datasource: www.yahoo.com_")) %>% 
+  tab_style(style = list(cell_text(color = "#196F3D")),
+            locations = cells_body(columns = Above_EMA, 
+                                   rows = Above_EMA == TRUE)) %>% 
+  tab_style(style = list(cell_text(color = "#7B241C")),
+            locations = cells_body(columns = Above_EMA, 
+                                   rows = Above_EMA == FALSE)) %>% 
+  tab_style(style = list(cell_fill(color = "#E8F8F5"),
+                         cell_text(weight =  "bold")),
+            locations = cells_body(rows = 1)) %>% 
+  tab_style(style = cell_text(align = "right"),
+            locations = cells_source_notes()) %>%
+  cols_label(etf_name = "ETF Full Name / Description", 
+             USD = "Ticker",
+             Above_EMA = "Above EMA", 
+             Y_Mm = "1Y Mm %")
+
+# preparing the monthly table
+temp_df_m <- as_tibble(monthly_1ym)
+temp_df_m <- temp_df_m[,order(temp_df_m[nrow(temp_df_m),],decreasing = TRUE)]
+temp_df_m <- tail(temp_df_m, 1) %>% "*"(100) %>% round(2)
+
+descriptions <- NULL
+for (ticker in names(temp_df_m)) {
+  description <- etf_query$name[etf_query$ticker_usd == ticker]
+  descriptions <- append(descriptions, description)
+}
+
+leaderboard_data_m <- tibble(descriptions,
+                           names(temp_df_m),
+                           abs_mmt_state_m,
+                           t(temp_df_m))
+
+names(leaderboard_data_m) <- c("etf_name",
                              "USD", "Above_EMA", "Y_Mm")
 
-leaderboard_table <-  
-  gt(leaderboard_data) %>% 
+leaderboard_table_m <-  
+  gt(leaderboard_data_m) %>% 
   tab_header(title = md("**ETFs Sorted By 1 Year Momentum**"), 
-             subtitle = "last 2 years of data") %>% 
+             subtitle = "last 2 years of data (monthly)") %>% 
   tab_source_note(md("_datasource: www.yahoo.com_")) %>% 
   tab_style(style = list(cell_text(color = "#196F3D")),
     locations = cells_body(columns = Above_EMA, rows = Above_EMA == TRUE)) %>% 
@@ -406,22 +469,27 @@ leaderboard_table <-
              USD = "Ticker",
              Above_EMA = "Above EMA", 
              Y_Mm = "1Y Mm %")
-  
-leaderboard_table
+
+leaderboard_table_w
+leaderboard_table_m
+
 ```
 ```{r, 'Plot', echo = TRUE, warning = FALSE, out.width= '100%', fig.asp = '1.618', dpi = 96}
 # Plot -------------------------------------------------------------------------
-temp_df <- select(wm_for_sql, -date)
-temp_df <- temp_df[,order(temp_df[nrow(temp_df),],decreasing = TRUE)]
-temp_df <- select(temp_df, 1:3)
-temp_df <- tibble(date = wm_for_sql$date, temp_df)
-temp_df <- tail(temp_df, 24)
-plot_data <- melt(temp_df, id = "date")
 
-best_3_plot <- ggplot(plot_data, aes(x = date, y = value, colour = variable)) +
+# momentum plot weekly
+temp_df_w <- select(wm_for_sql, -date)
+temp_df_w <- temp_df_w[,order(temp_df_w[nrow(temp_df_w),],decreasing = TRUE)]
+temp_df_w <- select(temp_df_w, 1:3) %>% "*"(100) %>% round(2)
+temp_df_w <- tibble(date = wm_for_sql$date, temp_df_w)
+temp_df_w <- tail(temp_df_w, 100)
+plot_data_w <- melt(temp_df_w, id = "date")
+
+best_3_plot_w <- ggplot(plot_data_w, 
+                        aes(x = date, y = value, colour = variable)) +
   geom_line() +
-  labs(title = "Top 3 ETFs With Best 1 Year Momentum",
-       subtitle = "last 2 years of data",
+  labs(title = "ETFs by the best 1 Year Momentum",
+       subtitle = "last 2 years of data (weekly)",
        caption = "datasource: www.yahoo.com",
        x = NULL,
        y = "Momentum %",
@@ -432,19 +500,48 @@ best_3_plot <- ggplot(plot_data, aes(x = date, y = value, colour = variable)) +
         plot.caption = element_text(face = "italic"), 
         aspect.ratio = 9/16)
 
-best_3_plot
+# momentum plot monthly
+temp_df_m <- select(mm_for_sql, -date)
+temp_df_m <- temp_df_m[,order(temp_df_m[nrow(temp_df_m),],decreasing = TRUE)]
+temp_df_m <- select(temp_df_m, 1:3) %>% "*"(100) %>% round(2)
+temp_df_m <- tibble(date = mm_for_sql$date, temp_df_m)
+temp_df_m <- tail(temp_df_m, 24)
+plot_data_m <- melt(temp_df_m, id = "date")
+
+best_3_plot_m <- ggplot(plot_data_m, 
+                        aes(x = date, y = value, colour = variable)) +
+  geom_line() +
+  labs(title = "ETFs by the best 1 Year Momentum",
+       subtitle = "last 2 years of data (monthly)",
+       caption = "datasource: www.yahoo.com",
+       x = NULL,
+       y = "Momentum %",
+       colour = "ETF") + 
+  theme_minimal() +
+  theme(plot.title = element_text(colour = "#3498DB", face = "bold"), 
+        plot.subtitle = element_text(colour = "#555555", face = "bold"), 
+        plot.caption = element_text(face = "italic"), 
+        aspect.ratio = 9/16)
+
+best_3_plot_w
+best_3_plot_m
+
 ```
 ```{r, 'CSV-Export', echo = TRUE, eval = FALSE}
 # CSV Export -------------------------------------------------------------------
-write.csv(leaderboard_data, "dm_etf_leaderboard.csv")
-write.csv(temp_df, "dm_etf_all_2_years_data.csv")
+
+write.csv(leaderboard_data_w, "dm_10_etfs_weekly.csv")
+write.csv(leaderboard_data_m, "dm_10_etfs_monthly.csv")
+write.csv(temp_df_w, "dm_10_etfs_2_years_of_mmt_data_weekly.csv")
+write.csv(temp_df_m, "dm_10_etfs_2_years_of_mmt_data_monthly.csv")
+
 ```
 ```{r, 'Google-Export', echo = TRUE, eval = FALSE}
 # Google Sheet Export ----------------------------------------------------------
 gs4_auth()
 my_gsheets <- gs4_get(Sys.getenv("file_id"))
 
-df_to_write <- leaderboard_data
+df_to_write <- leaderboard_data_w
 range_write(
   my_gsheets,
   df_to_write,
@@ -481,13 +578,13 @@ If you are familiar with issue registers this one is quite different because it 
 1. I need to hide my credentials somehow to not commit them to the public by accident.
 2. There are big differences in how Google Colab and RStudio execute code. I need to build two versions of the code.
 
-**Solution:** I am going to use version control only in RStudio (with GitHub) and I will share my Google Colab only with people I trust.
+**Solution:** I am going to use version control only in RStudio (connect with GitHub) and I will share my Google Colab only with people I trust.
 
 ---
 
 3. There are going to be too many source files to keep them in Colab.
 
-**Solution:** After consideration, I think that there is no real need to keep them in Colab. I am going to put a link to my GitHub repository for whose who are interested.
+**Solution:** After consideration, I think that there is no real need to keep them in Colab. I am going to put a link to my GitHub repository for those who are interested.
 
 ---
 
@@ -499,7 +596,7 @@ If you are familiar with issue registers this one is quite different because it 
 
 5. After finishing the code I can easily gather data for all 16 cases of Double-Momentum use. Now I can focus on the next step but which one?
 
-**Solution:** I think that creating a code for portfolio optimization will be easier from the all remaining tasks and it allows me to get the last (17th) set of data for comparison. So the next step will be module III.
+**Solution:** I think that creating a code for portfolio optimization will be easies from the remaining tasks and it allows me to get the last (17th) set of data for comparison. So the next step will be module III.
 
 ---
 
@@ -509,7 +606,7 @@ If you are familiar with issue registers this one is quite different because it 
 
 ---
 
-7. There is a problem connecting to the DB. It works in Google Colab but fails in RStudio. It demands the use of SSL but when I put “sslmode = ‘require’” it crashes the environment in RStudio.
+7. There is a problem connecting to the DB. It works in Google Colad but fails in RStudio. It demands the use of SSL but when I put “sslmode = ‘require’” it crashes the environment in RStudio.
 
 **Solution:** Switched from RPostgreSQL to RPostgres library. It allows SSL without any problem.
 
@@ -517,7 +614,7 @@ If you are familiar with issue registers this one is quite different because it 
 
 8. I transformed the momentum calculation from scientific format too early. I need them only for data presentation (the last step) but in the DB it should be stored with big precision.
 
-**Solved 2023-01-10:** Code in all files corrected.
+**Solution [2023-01-10]:** Code in all files corrected.
 
 ---
 
@@ -528,16 +625,20 @@ If you are familiar with issue registers this one is quite different because it 
 ---
 
 **2023-01-03**
-10. I forgot to save the calculation results for absolute momentum.I am going to need them in Module II for backtesting.
+10. I forgot to save the calculation results for absolute momentum. I am going to need them in Module II for backtesting.
 
-**!! ONGOING !!**
+2023-01-12: I think I need to do this in a different file. I have already put a lot into the "Module I" and I don't want to put all the work (and code) into one file. It can unnecessarily complicate future maintenance.
+
+**Solution [2023-01-14]:** Decision. I am going to keep data mining together
+ so I will build datatables for methods comparison. It will probably be something like: Asset name, Date, Quotation, Absolute Momentum (T/F), Momentum levels for comparison.
 
 ---
 
-**2023-01-03**
-11. I need to include CSV files with my database dump for those who don't want to use databases or maybe I should only just describe a table structure for the code to work?
 
-**Solved 2023-01-11:** Files already on GitHub. File list updated.
+**2023-01-03**
+11. I need to include CSV files with my database dump for those who don't want to use databases... or maybe I should only just describe a table structure for the code to work?
+
+**Solution [2023-01-11]:** Files already on GitHub. File list updated.
 
 ---
 
@@ -545,16 +646,25 @@ If you are familiar with issue registers this one is quite different because it 
 
 12. There are many too many code files. I need to rewrite them in the way that one file will generate data using monthly and weekly intervals in one go.
 
-**Solved 2023-01-11** I have rewritten the code and reduced the files by the half. File list in this document has been updated too.
+**Solution [2023-01-11]:** I have rewritten the code and reduced the files by the half. File list in this document has been updated too.
 
 ---
 
+**2023-01-15**
+
+13. In the files for crypto the momentum calculations for UNI-USD are absurdly high. It looks like there is some bug in data but I need to take a closer took, just in case.
+
+**!!! TO DO !!!**
+
+---
 
 ## Project files on GitHub
 
 *.gitignore* – internal GitHub configuration file
 
-*Analytics_Notebook.Rmd* – The Project’s notebook, explanation and comments.
+*Analytics_Notebook.html* – The Project’s notebook fully generated and ready.
+
+*Analytics_Notebook.Rmd* – The Project’s notebook R Markdown source version.
 
 *project.Rproj* – Rstudio Project file
 

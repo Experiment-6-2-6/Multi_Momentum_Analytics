@@ -30,39 +30,39 @@ my_postgr <- dbConnect(
 
 start_date <- Sys.Date() - (3 * 365)
 end_date <- Sys.Date()
-etf_qts_env <- new.env()
-etf_query <- dbGetQuery(my_postgr, "SELECT * FROM crypto_info;")
-yahoo_symbols <- as.vector(etf_query[["ticker"]])
+crp_qts_env <- new.env()
+crp_query <- dbGetQuery(my_postgr, "SELECT * FROM crypto_info;")
+yahoo_symbols <- as.vector(crp_query[["ticker"]])
 
 # daily quotes
 getSymbols(yahoo_symbols, 
            from = start_date, 
            to = end_date, 
            periodicity = "daily",
-           env = etf_qts_env)
-daily_closes <- do.call(merge, eapply(etf_qts_env, Ad))
+           env = crp_qts_env)
+daily_closes <- do.call(merge, eapply(crp_qts_env, Ad))
 daily_closes <- na.omit(daily_closes)
-names(daily_closes) <- gsub("-USD.Adjusted", "", names(daily_closes))
+names(daily_closes) <- gsub(".USD.Adjusted", "", names(daily_closes))
 
 # weekly quotes
 getSymbols(yahoo_symbols, 
            from = start_date, 
            to = end_date, 
            periodicity = "weekly",
-           env = etf_qts_env)
-weekly_closes <- do.call(merge, eapply(etf_qts_env, Ad))
+           env = crp_qts_env)
+weekly_closes <- do.call(merge, eapply(crp_qts_env, Ad))
 weekly_closes <- na.omit(weekly_closes)
-names(weekly_closes) <- gsub("-USD.Adjusted", "", names(weekly_closes))
+names(weekly_closes) <- gsub(".USD.Adjusted", "", names(weekly_closes))
 
 # monthly quotes
 getSymbols(yahoo_symbols, 
            from = start_date, 
            to = end_date, 
            periodicity = "monthly",
-           env = etf_qts_env)
-monthly_closes <- do.call(merge, eapply(etf_qts_env, Ad))
+           env = crp_qts_env)
+monthly_closes <- do.call(merge, eapply(crp_qts_env, Ad))
 monthly_closes <- na.omit(monthly_closes)
-names(monthly_closes) <- gsub("-USD.Adjusted", "", names(monthly_closes))
+names(monthly_closes) <- gsub(".USD.Adjusted", "", names(monthly_closes))
 
 # Writing into DB (quotes) -----------------------------------------------------
 
@@ -147,6 +147,8 @@ dbDisconnect(my_postgr)
 
 # Leaderboard Table ------------------------------------------------------------
 
+# Leaderboard Table ------------------------------------------------------------
+
 # preparing the weekly table
 temp_df_w <- as_tibble(weekly_1ym)
 temp_df_w <- temp_df_w[,order(temp_df_w[nrow(temp_df_w),],decreasing = TRUE)]
@@ -154,7 +156,7 @@ temp_df_w <- tail(temp_df_w, 1) %>% "*"(100) %>% round(2)
 
 descriptions <- NULL
 for (ticker in names(temp_df_w)) {
-  description <- etf_query$name[etf_query$ticker == paste0(ticker, "-USD")]
+  description <- crp_query$name[crp_query$ticker == paste0(ticker, "-USD")]
   descriptions <- append(descriptions, description)
 }
 
@@ -163,28 +165,28 @@ leaderboard_data_w <- tibble(descriptions,
                              abs_mmt_state_w,
                              t(temp_df_w))
 
-names(leaderboard_data_w) <- c("etf_name",
-                               "USD", "Above_EMA", "Y_Mm")
+names(leaderboard_data_w) <- c("crp_name",
+                               "USD", "Above_0", "Y_Mm")
 
 leaderboard_table_w <-  
   gt(leaderboard_data_w) %>% 
-  tab_header(title = md("**ETFs Sorted By 1 Year Momentum**"), 
+  tab_header(title = md("**Cryptos Sorted By 1 Year Momentum**"), 
              subtitle = "last 2 years of data (weekly)") %>% 
-  tab_source_note(md("_datasource: www.yahoo.com_")) %>% 
+  tab_source_note(md("_Datasource: CoinMarketCap via Yahoo Finance_")) %>% 
   tab_style(style = list(cell_text(color = "#196F3D")),
-            locations = cells_body(columns = Above_EMA, 
-                                   rows = Above_EMA == TRUE)) %>% 
+            locations = cells_body(columns = Above_0, 
+                                   rows = Above_0 == TRUE)) %>% 
   tab_style(style = list(cell_text(color = "#7B241C")),
-            locations = cells_body(columns = Above_EMA, 
-                                   rows = Above_EMA == FALSE)) %>% 
+            locations = cells_body(columns = Above_0, 
+                                   rows = Above_0 == FALSE)) %>% 
   tab_style(style = list(cell_fill(color = "#E8F8F5"),
                          cell_text(weight =  "bold")),
             locations = cells_body(rows = 1)) %>% 
   tab_style(style = cell_text(align = "right"),
             locations = cells_source_notes()) %>%
-  cols_label(etf_name = "ETF Full Name / Description", 
+  cols_label(crp_name = "Crypto Full Name / Description", 
              USD = "Ticker",
-             Above_EMA = "Above EMA", 
+             Above_0 = "Above 0", 
              Y_Mm = "1Y Mm %")
 
 # preparing the monthly table
@@ -194,7 +196,7 @@ temp_df_m <- tail(temp_df_m, 1) %>% "*"(100) %>% round(2)
 
 descriptions <- NULL
 for (ticker in names(temp_df_m)) {
-  description <- etf_query$name[etf_query$ticker == paste0(ticker, "-USD")]
+  description <- crp_query$name[crp_query$ticker == paste0(ticker, "-USD")]
   descriptions <- append(descriptions, description)
 }
 
@@ -203,28 +205,26 @@ leaderboard_data_m <- tibble(descriptions,
                              abs_mmt_state_m,
                              t(temp_df_m))
 
-names(leaderboard_data_m) <- c("etf_name",
-                               "USD", "Above_EMA", "Y_Mm")
+names(leaderboard_data_m) <- c("crp_name",
+                               "USD", "Above_0", "Y_Mm")
 
 leaderboard_table_m <-  
   gt(leaderboard_data_m) %>% 
   tab_header(title = md("**Cryptos Sorted By 1 Year Momentum**"), 
              subtitle = "last 2 years of data (monthly)") %>% 
-  tab_source_note(md("_datasource: www.yahoo.com_")) %>% 
+  tab_source_note(md("_Datasource: CoinMarketCap via Yahoo Finance_")) %>% 
   tab_style(style = list(cell_text(color = "#196F3D")),
-            locations = cells_body(columns = Above_EMA, 
-                                   rows = Above_EMA == TRUE)) %>% 
+            locations = cells_body(columns = Above_0, rows = Above_0 == TRUE)) %>% 
   tab_style(style = list(cell_text(color = "#7B241C")),
-            locations = cells_body(columns = Above_EMA, 
-                                   rows = Above_EMA == FALSE)) %>% 
+            locations = cells_body(columns = Above_0, rows = Above_0 == FALSE)) %>% 
   tab_style(style = list(cell_fill(color = "#E8F8F5"),
                          cell_text(weight =  "bold")),
             locations = cells_body(rows = 1)) %>% 
   tab_style(style = cell_text(align = "right"),
             locations = cells_source_notes()) %>%
-  cols_label(etf_name = "ETF Full Name / Description", 
+  cols_label(crp_name = "Crypto Full Name / Description", 
              USD = "Ticker",
-             Above_EMA = "Above EMA", 
+             Above_0 = "Above 0", 
              Y_Mm = "1Y Mm %")
 
 leaderboard_table_w
@@ -245,10 +245,10 @@ best_3_plot_w <- ggplot(plot_data_w,
   geom_line() +
   labs(title = "Cryptos by the best 1 Year Momentum",
        subtitle = "last 2 years of data (weekly)",
-       caption = "_Datasource: CoinMarketCap via Yahoo Finance_",
+       caption = "Datasource: CoinMarketCap via Yahoo Finance",
        x = NULL,
        y = "Momentum %",
-       colour = "ETF") + 
+       colour = "Token") + 
   theme_minimal() +
   theme(plot.title = element_text(colour = "#3498DB", face = "bold"), 
         plot.subtitle = element_text(colour = "#555555", face = "bold"), 
@@ -268,10 +268,10 @@ best_3_plot_m <- ggplot(plot_data_m,
   geom_line() +
   labs(title = "Cryptos by the best 1 Year Momentum",
        subtitle = "last 2 years of data (monthly)",
-       caption = "_Datasource: CoinMarketCap via Yahoo Finance_",
+       caption = "Datasource: CoinMarketCap via Yahoo Finance",
        x = NULL,
        y = "Momentum %",
-       colour = "ETF") + 
+       colour = "Token") + 
   theme_minimal() +
   theme(plot.title = element_text(colour = "#3498DB", face = "bold"), 
         plot.subtitle = element_text(colour = "#555555", face = "bold"), 

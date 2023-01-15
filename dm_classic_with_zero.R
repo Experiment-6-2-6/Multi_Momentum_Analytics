@@ -164,7 +164,7 @@ leaderboard_data_w <- tibble(descriptions,
                              t(temp_df_w))
 
 names(leaderboard_data_w) <- c("etf_name",
-                               "USD", "Above_EMA", "Y_Mm")
+                               "USD", "Above_0", "Y_Mm")
 
 leaderboard_table_w <-  
   gt(leaderboard_data_w) %>% 
@@ -172,11 +172,11 @@ leaderboard_table_w <-
              subtitle = "last 2 years of data (weekly)") %>% 
   tab_source_note(md("_datasource: www.yahoo.com_")) %>% 
   tab_style(style = list(cell_text(color = "#196F3D")),
-            locations = cells_body(columns = Above_EMA, 
-                                   rows = Above_EMA == TRUE)) %>% 
+            locations = cells_body(columns = Above_0, 
+                                   rows = Above_0 == TRUE)) %>% 
   tab_style(style = list(cell_text(color = "#7B241C")),
-            locations = cells_body(columns = Above_EMA, 
-                                   rows = Above_EMA == FALSE)) %>% 
+            locations = cells_body(columns = Above_0, 
+                                   rows = Above_0 == FALSE)) %>% 
   tab_style(style = list(cell_fill(color = "#E8F8F5"),
                          cell_text(weight =  "bold")),
             locations = cells_body(rows = 1)) %>% 
@@ -184,7 +184,7 @@ leaderboard_table_w <-
             locations = cells_source_notes()) %>%
   cols_label(etf_name = "ETF Full Name / Description", 
              USD = "Ticker",
-             Above_EMA = "Above EMA", 
+             Above_0 = "Above 0", 
              Y_Mm = "1Y Mm %")
 
 # preparing the monthly table
@@ -204,7 +204,7 @@ leaderboard_data_m <- tibble(descriptions,
                              t(temp_df_m))
 
 names(leaderboard_data_m) <- c("etf_name",
-                               "USD", "Above_EMA", "Y_Mm")
+                               "USD", "Above_0", "Y_Mm")
 
 leaderboard_table_m <-  
   gt(leaderboard_data_m) %>% 
@@ -212,11 +212,11 @@ leaderboard_table_m <-
              subtitle = "last 2 years of data (monthly)") %>% 
   tab_source_note(md("_datasource: www.yahoo.com_")) %>% 
   tab_style(style = list(cell_text(color = "#196F3D")),
-            locations = cells_body(columns = Above_EMA, 
-                                   rows = Above_EMA == TRUE)) %>% 
+            locations = cells_body(columns = Above_0, 
+                                   rows = Above_0 == TRUE)) %>% 
   tab_style(style = list(cell_text(color = "#7B241C")),
-            locations = cells_body(columns = Above_EMA, 
-                                   rows = Above_EMA == FALSE)) %>% 
+            locations = cells_body(columns = Above_0, 
+                                   rows = Above_0 == FALSE)) %>% 
   tab_style(style = list(cell_fill(color = "#E8F8F5"),
                          cell_text(weight =  "bold")),
             locations = cells_body(rows = 1)) %>% 
@@ -224,7 +224,7 @@ leaderboard_table_m <-
             locations = cells_source_notes()) %>%
   cols_label(etf_name = "ETF Full Name / Description", 
              USD = "Ticker",
-             Above_EMA = "Above EMA", 
+             Above_0 = "Above 0", 
              Y_Mm = "1Y Mm %")
 
 leaderboard_table_w

@@ -1,7 +1,7 @@
 # Introduction
 
 At the beginning, the project was intended as a small help in my personal investing strategy. I have to do a lot of manual checking and calculations every week and I wanted to automate the work. When the work continued, new ideas popped into my head and after a few weeks I realised that it can be a nice portfolio to show to future clients or employers.
-All necessary (and not so necessary) explanations are in the Analytics_Notebook.Rmd file. They are really lengthy so I am not going to repeat myself here.
+All necessary (and not so necessary) explanations are in the Analytics_Notebook.html file. They are really lengthy so I am not going to repeat myself here.
 The work was never intended as any investing advice so don't use it this way please.
 To make any reasonable use of it you would need to understand the idea and it is only in my head so far.
 I don't even know if it is going to be profitable…
@@ -13,6 +13,10 @@ Aloha!
 Project files description
 
 project.Rproj – Rstudio Project file
+
+Analytics_Notebook.html – The Project’s notebook fully generated and ready.
+
+Analytics_Notebook.Rmd – The Project’s notebook R Markdown source version.
 
 tests.R – for testing new ideas and experimenting
 
