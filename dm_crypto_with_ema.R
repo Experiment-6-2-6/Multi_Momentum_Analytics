@@ -95,7 +95,7 @@ abs_mmt_state_w <- rep(TRUE, ncol(weekly_closes))
 names(abs_mmt_state_w) <- names(weekly_closes)
 for (ticker in names(weekly_closes)){
   ema30w <- EMA(weekly_closes[,ticker], n = 30)
-  if (last(ema30w) < last(weekly_closes[,ticker])) {
+  if (ema30w[nrow(ema30w)] < weekly_closes[nrow(weekly_closes),ticker]) {
     abs_mmt_state_w[[ticker]] <- TRUE
   } else {
     abs_mmt_state_w[[ticker]] <- FALSE
@@ -107,7 +107,7 @@ abs_mmt_state_m <- rep(TRUE, ncol(monthly_closes))
 names(abs_mmt_state_m) <- names(monthly_closes)
 for (ticker in names(monthly_closes)){
   ema7m <- EMA(monthly_closes[,ticker], n = 7)
-  if (last(ema7m) < last(monthly_closes[,ticker])) {
+  if (ema7m[nrow(ema7m)] < monthly_closes[nrow(monthly_closes),ticker]) {
     abs_mmt_state_m[[ticker]] <- TRUE
   } else {
       abs_mmt_state_m[[ticker]] <- FALSE

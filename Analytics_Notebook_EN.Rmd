@@ -8,89 +8,63 @@ output:
     highlight: github
     toc: TRUE
 ---
-*This document is a record of my thought processes and a documentation of the workflow of the analysis.*
 
-*Also, it is a presentation of my data analyst skills addressed to my future clients/employers.*
+*This document serves as a record of my analytical methods and workflow, as well as a showcase of my data analysis abilities for potential clients and employers.*
 
-*Hence, please remember, it is for information purposes only and does not consist of investment advice.*
+*It must be noted that the information provided is for informational purposes only and does not constitute investment advice.*
+
+---
+
+This document is available in English, Spanish and Polish.
 
 ---
 
 # Introduction
 
-I based my investment strategy on Gary Antonacci's "Dual-Momentum". It is explained by him in the book "Dual Momentum Investing: An Innovative Strategy for Higher Returns with Lower Risk" (16 Dec. 2014 McGraw Hill). You can find a short YouTube video with the author explaining the strategy [here](https://www.youtube.com/watch?v=lf1u4dsHavs).
+In this research, I propose an adaptation of the Dual-Momentum investment strategy as outlined by Gary Antonacci in his book "Dual Momentum Investing: An Innovative Strategy for Higher Returns with Lower Risk" (16 Dec. 2014 McGraw Hill). The strategy is also explained in a short YouTube video by the author, which can be found [here](https://www.youtube.com/watch?v=lf1u4dsHavs).
 
-I am interested in making some changes to the strategy and test if it works with crypto or with single stocks pre-filtered by ROIC-EPSgr-BVgr-REVgr-Debt. However, it is going to take a considerable chunk of my free time so I decided to divide the analysis in parts and treat them as independent and complete modules.
+My objective is to investigate the potential of modifying the Dual-Momentum strategy to include crypto assets or single stocks pre-filtered by various financial ratios such as ROIC, EPS growth, BV growth, REV growth, and Debt. In order to achieve this, the analysis will be conducted in several independent yet comprehensive modules.
 
-Simultaneously, I didn't want to waste such a good piece of analytical work and I decided to use it to show my abilities to potential clients/employers. To suit this goal, this document became extremely verbose and now looks more like a tutorial than my usual analysis.
+In addition to the primary objective, this research also serves as a demonstration of my analytical skills to potential clients and employers. Thus, the document has been designed to be comprehensive and tutorial-like in nature.
 
-For the same reason I use an external database even if there is no real need to do so to produce a comprehensive report but the use of databases allows me to show my SQL skills and simultaneously it creates data sources for Tableau and MS Power BI presentations which I am going to create later.
+In order to thoroughly evaluate the proposed modifications to the Dual-Momentum strategy, an external database is utilized. While this may not be strictly necessary for the analysis, the use of a database allows for the demonstration of my proficiency in SQL and provides a comprehensive data source for the subsequent creation of Tableau and MS Power BI presentations.
 
-If you are not interested in my thought process, reasoning and workflow and you only want to see the practical version of this work in the action please see the dm_r_code_only.R file [here](https://colab.research.google.com/drive/1dSvAo9at6_AJCSfZQDgrQ5BLYH9FAY2V?usp=sharing). The code is commented and it shouldn't be challenging to anyone with a knowledge of R.
+For those interested in the practical application of this research, a version-controlled GitHub repository has been created to house the project. The repository, which can be accessed [here](https://github.com/Experiment-6-2-6/Multi_Momentum_Analytics), contains the necessary code and resources to replicate the analysis.
 
-At the beginning of this work I wanted to build this notebook as usual. That means some thoughts followed by code followed by explanations. But soon I realised that it will create unnecessary distraction for non-coding audiences. So finally I have put all explanatory parts at the beginning of the notebook and the code of the first module at the end. The both parts are in chronological order and have similar titles. I hope this way the work is easier to read and to understand.
+With the introduction now complete, let us delve into the project at hand.
 
-I write under a version control using GitHub and you can access the repository of the project [here](https://github.com/Experiment-6-2-6/Multi_Momentum_Analytics)
+# Research Questions
 
-If you have any questions please contact me via LinkedIn [here](https://www.linkedin.com/in/kristoffdudek/) or via an email [click here](mailto:kriss.dudek@gmail.com) and send it using your mail client.
+The goal of this research is to investigate the potential for improving upon the Dual-Momentum strategy as proposed by Gary Antonacci and to test its applicability to different assets. The current strategy has certain weaknesses, such as its tendency to miss price movements in highly volatile environments due to the monthly check-in. The following questions will guide the analysis:
 
-So if we finished the introduction, let's dive into the project...
-
-# Questions
-
-I am not going to repeat the research of Mr Antonacci but I want to test if his system can be improved upon and if it works with different assets. There are some obvious weaknesses in the dual-momentum for example in a high volatile environment it can miss the price move by a lot because the check is once a month. So maybe I can find a way to improve it - at least for me.
-
-My questions are:
-
-* What if we check the dual-momentum each week instead of month?
-* How that influences the turnover and the trading costs. 
-* Can it work better with a bigger number of ETFs?
-* Is it possible to minimise drawdown by using EMA(30W) as an absolute momentum measure?
-* Is it actually more efficient than the optimised basket of all ETFs used in it?
-* How does it work with a basket of single stocks (prefiltered by my usual rules of a good investment company)?
-* How does it work with crypto?
-* What happens if we use monthly instead of yearly momentum?
+1. How does the performance of the Dual-Momentum strategy change when checking momentum on a weekly basis rather than monthly?
+1. What impact does this change have on turnover and trading costs?
+1. Is the strategy more effective when applied to a larger number of ETFs?
+1. Can the drawdown be minimized by using a 30-week EMA as an absolute momentum measure?
+1. How does the strategy compare to a basket of ETFs that is optimized for performance?
+1. How does the strategy perform when applied to a basket of single stocks pre-filtered by financial ratios?
+1. How does the strategy perform when applied to crypto assets?
+1. What is the effect of using monthly momentum rather than yearly momentum?
 
 # Assumptions and goals
 
-* All data should be pulled from public, free sources.
-* The analyses will be performed at weekends only.
-* I am going to get data not older than 18 April 2013 because only after this date a commission free trading became available.
-* All prices of ETFs, shares and crypto will be in USD as I want to avoid additional variables of GBP gain/loss. 
-* If possible, ETFs should be listed on London Stock Exchange and if possible have their version in GBX as the smallest known currency conversion fee is 0.15% mark-up and I would rather avoid that in future application.
-* For comparison I need to do some data mining and get a table of weekly performances including:
-  + Standard Dual Momentum Strategy.
-  + DM applied to the basket of 10 ETF.
-  + DM applied to the basket of 5 shares.
-  + DM applied to 10 crypto.
-* Each of these options must have its version with:
-  + Check - Rebalancing done monthly
-  + Check - Rebalancing done weekly
-* And these version consecutively needs variants with absolute momentum calculated:
-  + Using just positive or negative (sign).
-  + Using Exponential Moving Average of 30 weeks.
+* The research aims to test the potential improvements of Gary Antonacci's Dual-Momentum investment strategy, as well as its applicability to different asset classes such as crypto and single stocks filtered by specific financial metrics.
+* Data for the analysis will be sourced from publicly available, free sources and the analysis will be conducted on weekends only. The data used in the research will not be older than April 18, 2013 as this is when commission-free trading became available.
+* To eliminate additional variables, all prices for ETFs, shares, and crypto will be in USD.
 
-That gives 16 combinations plus one additional for performance of an optimised basket of ETFs.
-* To get this I need prepare some R scripts:
-  + Basic Dual Momentum Assessment and use EMA(30) (module I)
-  + Portfolio Performance Valuation (module II)
-  + Portfolio Optimisation (module III)
-  + Share Screen (module IV)
-* For the module I the summary should be in a form of leaderboard table with ETFs sorted from top to bottom the strongest momentum on top.
-* Additionally, I would like to add the weekly ETF momentum calculations to my Google Sheets.
-* I am interested in weekly data only but I will keep cleaned daily data and daily calculations in my database for (Tableau and Power BI).
-* For the relative momentum I am going to compare the 1 year rate of change in the ETFs performance.
-* In module I I am going to implement EMA(30) as a measure of the absolute momentum as it is going to be more complicated than simply looking if the momentum is positive or negative.
-* I think that the last 3 years of data would suffice for my needs only. And I am not very interested in how good the system was in the past. I am going to focus on my practical goals.
-* For the research I am going to use the following baskets of assets:
+The research will involve data mining to obtain a table of weekly performances including the standard Dual Momentum strategy, as well as its application to baskets of 10 ETFs, 5 shares, and 10 crypto assets. Each of these options will be evaluated with both monthly and weekly rebalancing, and variants with absolute momentum calculated using both positive or negative sign and Exponential Moving Average of 30 weeks. This results in a total of 16 combinations, plus one additional for the performance of an optimized basket of ETFs.
 
-**Classic Dual-Momentum Case:**
+To achieve these goals, R scripts will be prepared for: Basic Dual Momentum Assessment and use of EMA(30) (module I), Portfolio Performance Valuation (module II), Portfolio Optimization (module III), and Share Screen (module IV). The summary for module I will be presented in the form of a leaderboard table with ETFs sorted by strongest momentum. Additionally, weekly ETF momentum calculations will be added to a Google Sheet (for my personal use). The research will focus on weekly data, but daily data and calculations will also be kept in a database for use in Tableau and Power BI.
+
+## Assets by Grups Used in the research
+
+### Classic Dual-Momentum Case:
 
 1. **VOO** Vanguard S&P 500 ETF
 1. **VEO** Vanguard All-World ex-US ETF
 1. **BND** Vanguard Total Bond Market Index ETF
 
-**10 ETFs from London Stock Exchange**
+### 10 ETFs from London Stock Exchange
 
 1. **VUAA**	Vanguard S&P 500 UCITS ETF USD (acc)
 1. **CNDX**	iShares NASDAQ 100 UCITS ETF USD (acc)
@@ -103,7 +77,7 @@ That gives 16 combinations plus one additional for performance of an optimised b
 1. **IGIL**	iShares Global Inflation Linked Govt Bonds UCITS ETF USD (acc)
 1. **IGLN**	iShares Physical Gold ETC USD (no income)
 
-**Crypto Set**
+### Crypto Set
 
 1. **AAVE** - AAVE Liquidity Protocol
 1. **ADA**  - Cardano Token
@@ -133,26 +107,34 @@ That gives 16 combinations plus one additional for performance of an optimised b
 
 # Methodology and Workflow
 
-Next few paragraphs are explanations of the **final version** of the code and the workflow in **each single, consecutive** module.
- 
-If you want to understand what kind of problems and ideas I have (had) it can be better if you first read the "Issue Register" as it is a chronological index of all problems, issues, ideas, changes and it is a description of the the **project as a whole**. 
+The final version of the code and workflow for each module will be explained in the following paragraphs. In order to fully understand the problems and ideas addressed in the research, it is recommended to first review the "Issue Register" which serves as a chronological index of all problems, issues, ideas, and changes in the project.
 
 ## Module One: Data Mining
 
-I can use any of my baskets but I decided to work out the code using the set of 10 ETFs with a 30 week exponential moving average.
+In Module One, data mining was conducted using a set of 10 ETFs with a 30 week exponential moving average.
 
 ### Environment Requirements
 
-I am using following packages:
-
+The following packages were utilized in this module: 
 * Quantmod for quantitative analysis
 * Tidyverse for general data manipulation
 * Dplyr which is a part of Tidyverse but needs to be activated separately
 * RPostgres for working with databases (do not use RPostgreSQL as it causes problems with a SSL connections)
 * GT to create a Great Table view in final report
 * Reshape2 to transform data into long format to simplify plot drawing
-* Ggplot2 for plotting how to take over the world in 3 easy steps
+* Ggplot2 for plotting how to take over the world in 3 easy steps 🤣
 * Googlesheets4 to write to my Google sheet
+
+```{r, 'libraries', echo = TRUE, message = FALSE, warning = FALSE}
+library(quantmod)
+library(tidyverse)
+library(dplyr)
+library(RPostgres)
+library(gt)
+library(reshape2)
+library(ggplot2)
+library(googlesheets4)
+```
 
 ### Getting and cleaning data
 
@@ -165,85 +147,9 @@ I am using following packages:
   + naming the columns with ETF names
   + dropping any rows with NA
   + transforming row names into date column (for use in SQL)
-* Rewriting the quotes_usd database as I want to have 3 years of daily closing prices on my server for the later use.
+* Rewriting the quotes_etfs_x database as I want to have 3 years of daily closing prices on my server for the later use.
 
-### Additional Explanations
-
-Instead of just updating the data in the table I am dropping it completely because my list of ETFs can change with time so the database has to adapt dynamically. And because I want the last 3 years of data only it is much simpler to rewrite the whole DB from a scratch.
-
-
-I have decided to drop whole rows from df if there is any NA in it because I need the ETFs' momentum in relation to each other. That means it doesn't matter much if sometimes I have longer or shorter periods for comparison as long as the periods are the same.
-
-
-I had to split XTS columns (eXtensive Time Series) into date and float to make them compatible with SQL database.
-
-
-When calculating ROC, I had chosen the simple Rate Of Change calculation method because I want it to be between -100% and +100% (and not -∞ to +∞). It is worth remembering that in ROC() function from Quantmod:
-
-* ROC() "discrete" = simple (arithmetic) return,
-* ROC() "continuous" = logarithmic (geometric) method
-
-### Calculations
-
-* checking if the asset's price is above the EMA(30)
-* calculating 1 year ROC
-* Transforming the result into a _common format_ (percentage with 2 decimals only).
-* Sending the results to the database.
-
-### Table and Plot (Report)
-
-Now it is time to build the report.
-As I already have sent all necessary data to the DB I can close the connection and focus on the local data frames.
-
-I want the report to be in the form of a table and a graph. To get that I am:
-
-* Sorting columns by the momentum of the last week in descending order.
-* Preparing the leaderboard:
-  + Building the table from the components
-  + Transposing the momentum table to vertical view
-  + Formatting and adding columns names
-  + Printing the table
-* Preparing the last year momentum chart
-  + Transforming selected data into long format
-  + Building the plot
-  + Drawing it
-
-### Exporting CSV files.
-
-For convenience sake I added a possibility to export the data in the csv format. The csv files are very easy to import into excel if one wishes to do so.
-
-### Adding output to Google Sheet.
-
-This part is rather for my convenience and I don't recommend running this chunk of code but I made the file publicly available for others (view mode only). You can always access it by clicking [here](https://docs.google.com/spreadsheets/d/1ULTKECt44zBzhROLlXMx3XtD-Vm0M5kQ2Ve63AtzJ64/edit?usp=sharing).
-
-It is only a single file because I had exported these two dataframes into one Google spreadsheet but into two separate sheets. The first one is a summary table and the second is hidden. Instead of showing it I use its data to create a chart on another (visible) sheet.
-
-## Module I - Code and Output
-
-The example output shown here uses:
-
-* selection of 10 ETFs
-* relative momentum of a year
-* absolute momentum judged by EMA(30)
-* checking / rebalancing period of a month
-
-```{r, 'libraries', echo = TRUE, message = FALSE, warning = FALSE}
-# Libraries --------------------------------------------------------------------
-
-library(quantmod)
-library(tidyverse)
-library(dplyr)
-library(RPostgres)
-library(gt)
-library(reshape2)
-library(ggplot2)
-library(googlesheets4)
-
-```
 ```{r, 'Connection-On', echo = TRUE, message = FALSE, warning = FALSE}
-
-# Postgres DB connection -------------------------------------------------------
-
 my_postgr <- dbConnect(
   RPostgres::Postgres(),
   host = Sys.getenv("sql_host"),
@@ -253,12 +159,8 @@ my_postgr <- dbConnect(
   port = 5432,
   sslmode = "require"
 )
-
-
 ```
 ```{r, 'Getting-Data', echo = TRUE, message = FALSE, warning = FALSE}
-# Getting the Data -------------------------------------------------------------
-
 start_date <- Sys.Date() - (3 * 365)
 end_date <- Sys.Date()
 etf_qts_env <- new.env()
@@ -294,11 +196,8 @@ getSymbols(yahoo_symbols,
 monthly_closes <- do.call(merge, eapply(etf_qts_env, Ad))
 monthly_closes <- na.omit(monthly_closes)
 names(monthly_closes) <- gsub(".L.Adjusted", "", names(monthly_closes))
-
 ```
 ```{r, 'Quotes-to-DB', echo = TRUE, message = FALSE, warning = FALSE}
-# Writing into DB (quotes) -----------------------------------------------------
-
 # Have to transform into PostgreSQL format before sending to DB
 dc_for_sql <- as.data.frame(daily_closes)
 dc_for_sql <- cbind(date = as.Date(rownames(dc_for_sql)), dc_for_sql)
@@ -320,47 +219,56 @@ if (dbExistsTable(my_postgr, "quotes_etfs_m")){
   dbRemoveTable(my_postgr, "quotes_etfs_m")
 }
 dbWriteTable(my_postgr, "quotes_etfs_m", mc_for_sql, row.names = FALSE)
-
 ```
-```{r, 'Absolute-Mmt', echo = TRUE, message = FALSE, warning = FALSE}
-# Absolute Momentum Check ------------------------------------------------------
 
+### Getting and cleaning data
+* Establishing the connection with my database
+* Getting the list of the ETFs names and symbols from the db
+* Limiting data pull to the last 3 years
+* Populating the daily and weekly data frames:
+  + getting data from Yahoo Finance
+  + extracting only the adjusted daily closes
+  + naming the columns with ETF names
+  + dropping any rows with NA
+  + transforming row names into date column (for use in SQL)
+* Rewriting the quotes_etfs_x database as I want to have 3 years of daily closing prices on my server for the later use.
+
+### Calculations
+
+* checking if the asset's price is above the EMA(30)
+* calculating 1 year ROC
+* Sending the results to the database.
+
+```{r, 'Absolute-Mmt', echo = TRUE, message = FALSE, warning = FALSE}
 # weekly check
 abs_mmt_state_w <- rep(TRUE, ncol(weekly_closes))
 names(abs_mmt_state_w) <- names(weekly_closes)
 for (ticker in names(weekly_closes)){
   ema30w <- EMA(weekly_closes[,ticker], n = 30)
-  if (last(ema30w) < last(weekly_closes[,ticker])) {
+  if (ema30w[nrow(ema30w)] < weekly_closes[nrow(weekly_closes),ticker]) {
     abs_mmt_state_w[[ticker]] <- TRUE
   } else {
     abs_mmt_state_w[[ticker]] <- FALSE
   }
 }
-
 # monthly check
 abs_mmt_state_m <- rep(TRUE, ncol(monthly_closes))
 names(abs_mmt_state_m) <- names(monthly_closes)
 for (ticker in names(monthly_closes)){
   ema7m <- EMA(monthly_closes[,ticker], n = 7)
-  if (last(ema7m) < last(monthly_closes[,ticker])) {
+  if (ema7m[nrow(ema7m)] < monthly_closes[nrow(monthly_closes),ticker]) {
     abs_mmt_state_m[[ticker]] <- TRUE
   } else {
       abs_mmt_state_m[[ticker]] <- FALSE
     }
 }
-
 ```
 ```{r, 'Relative-Mmt', echo = TRUE, message = FALSE, warning = FALSE}
-# Relative Momentum Calculation ------------------------------------------------
-
 daily_1ym <- ROC(daily_closes, n = 252, type = "discrete") %>%  na.omit()
 weekly_1ym <- ROC(weekly_closes, n = 50, type = "discrete") %>% na.omit()
 monthly_1ym <- ROC(monthly_closes, n = 12, type = "discrete") %>% na.omit()
-
 ```
 ```{r, 'Momentum-to-DB', echo = TRUE, message = FALSE, warning = FALSE}
-# Writing into DB (momentum) ---------------------------------------------------
-
 dm_for_sql <- as.data.frame(daily_1ym)
 dm_for_sql <- cbind(date = as.Date(rownames(dm_for_sql)), dm_for_sql)
 if (dbExistsTable(my_postgr, "momentum_etfs_d")) {
@@ -381,17 +289,30 @@ if (dbExistsTable(my_postgr, "momentum_etfs_m")) {
   dbRemoveTable(my_postgr, "momentum_etfs_m")
 }
 dbWriteTable(my_postgr, "momentum_etfs_m", mm_for_sql, row.names = FALSE)
-
 ```
 ```{r, 'Connection-Off', echo = TRUE, message = FALSE, warning = FALSE}
-# Connection Off ---------------------------------------------------------------
-
 dbDisconnect(my_postgr)
-
 ```
-```{r, 'Table', echo = TRUE, message = FALSE, warning = FALSE}
-# Leaderboard Table ------------------------------------------------------------
 
+### Table and Plot (Report)
+
+Now it is time to build the report.
+As I already have sent all necessary data to the DB I can close the connection and focus on the local data frames.
+
+I want the report to be in the form of a table and a graph. To get that I am:
+
+* Sorting columns by the momentum of the last week in descending order.
+* Preparing the leaderboard:
+  * Building the table from the components
+  * Transposing the momentum table to vertical view
+  * Formatting and adding columns names
+  * Printing the table
+* Preparing the last year momentum chart
+  * Transforming selected data into long format
+  * Building the plot
+  * Drawing it
+  
+```{r, 'Table', echo = TRUE, message = FALSE, warning = FALSE}
 # preparing the weekly table
 temp_df_w <- as_tibble(weekly_1ym)
 temp_df_w <- temp_df_w[,order(temp_df_w[nrow(temp_df_w),],decreasing = TRUE)]
@@ -484,11 +405,8 @@ leaderboard_table_m <-
 
 leaderboard_table_w
 leaderboard_table_m
-
 ```
 ```{r, 'Plot', echo = TRUE, warning = FALSE, out.width= '100%', fig.asp = '1.618', dpi = 96}
-# Plot -------------------------------------------------------------------------
-
 # momentum plot weekly
 temp_df_w <- select(wm_for_sql, -date)
 temp_df_w <- temp_df_w[,order(temp_df_w[nrow(temp_df_w),],decreasing = TRUE)]
@@ -539,19 +457,24 @@ best_3_plot_m <- ggplot(plot_data_m,
 
 best_3_plot_w
 best_3_plot_m
-
 ```
-```{r, 'CSV-Export', echo = TRUE, eval = FALSE}
-# CSV Export -------------------------------------------------------------------
 
+### Exporting CSV file.
+
+In order to facilitate data exploration and manipulation, I have implemented the capability to export the data in csv format. This makes it simple for stakeholders to access the data and perform their own analysis using tools like Excel. Furthermore, it allows for easy integration with other data sources for more in-depth examination.
+
+```{r, 'CSV-Export', echo = TRUE, eval = FALSE}
 write.csv(leaderboard_data_w, "dm_10_etfs_weekly.csv")
 write.csv(leaderboard_data_m, "dm_10_etfs_monthly.csv")
 write.csv(temp_df_w, "dm_10_etfs_2_years_of_mmt_data_weekly.csv")
 write.csv(temp_df_m, "dm_10_etfs_2_years_of_mmt_data_monthly.csv")
-
 ```
+
+### Adding output to Google Sheet.
+
+For my convenience and accessibility, I have exported the dataframes into a Google Spreadsheet. This can be accessed by clicking [here](https://docs.google.com/spreadsheets/d/1ULTKECt44zBzhROLlXMx3XtD-Vm0M5kQ2Ve63AtzJ64/edit?usp=sharing). The spreadsheet includes a summary table and a hidden sheet, which is used to create a chart on a separate, visible sheet. It is important to note that while this feature is included for convenience, running this specific code chunk is not necessary for the analysis.
+
 ```{r, 'Google-Export', echo = TRUE, eval = FALSE}
-# Google Sheet Export ----------------------------------------------------------
 gs4_auth()
 my_gsheets <- gs4_get(Sys.getenv("file_id"))
 
@@ -574,27 +497,25 @@ range_write(
   col_names = TRUE,
   reformat = TRUE
 )
-
-################################################################################
-############################### END OF  MODULE I ###############################
-################################################################################
 ```
-# Additional Info
 
 ## Issue Register
 
-Usually I don't show this part to stakeholders as it is not a part of any report but my experience as project manager taught me how important it is to have such a register.
+As a data analyst with project manager experience, I use some tools specific to PM. This is why I use a form of an "Issue Register". It serves as a log of any problems, ideas, changes, and other relevant information that occurs throughout the project.
 
-If you are familiar with issue registers this one is quite different because it is only for me so there is no need for the owner, no dates (as I put things in it as they happen) etc. I can even say it is something between the issue register and project log.
+It is worth noting that this register is for my own use only and it is not my standard practice to share it with stakeholders as it is not a part of any official report. It serves as a tool for me to keep track of progress and address any issues that may arise. Additionally, the register does not include specific dates as I add entries as they happen. It can be considered a combination of an issue register and a project log.
+
+Please note that this register is primarily intended for my own use and therefore the language used may be more direct and concise. In any doubt please ask questions by the email.
 
 ---
 
-1. I need to hide my credentials somehow to not commit them to the public by accident.
-2. There are big differences in how Google Colab and RStudio execute code. I need to build two versions of the code.
+1. To keep my DB credentials secure, I will need to find a way to hide them and prevent committing them to the public by accident.
+2. There are significant differences in how Google Colab and RStudio execute code. To account for this, I will need to create separate versions of the code for each platform.
 
 **Solved**
 
-I am going to use version control only in RStudio (connect with GitHub) and I will share my Google Colab only with people I trust.
+To maintain version control, I will only use RStudio in conjunction with GitHub. 
+To show the DB capabilities of the code I will share it with with all credentials on Google Colab but only with trusted individuals.
 
 ---
 
@@ -626,7 +547,7 @@ I think that creating a code for portfolio optimization will be easies from the 
 
 **Solved**
 
-Issue solved but I need a day of rest. (Current timestamp 2023-01-01 00:47:22) 😃🥂
+Issue solved but I need a day of rest. (Current timestamp 2023-01-01 00:47:22 UTC) 😃🥂
 
 ---
 
@@ -694,7 +615,7 @@ I have rewritten the code and reduced the files by the half. File list in this d
 
 **Solved [2023-01-15]**
 
-I have discovered that there are 3 tokens which have problems with quotation. I have already more than 20 cryptos on the list so I am going to remove the "trouble makers". Reason: I don't want to loose a tone of time in a search of reliable data source and 20 cases is enough for me.
+I have discovered that there are 3 tokens which have problems with quotation. I have already more than 20 cryptos on the list so I am going to remove the "trouble makers". Reason: I don't want to loose a tone of time in a search of reliable data source and 22 crypyos are enough for me.
 
 ---
 
@@ -710,35 +631,34 @@ All code files corrected.
 
 ## Project files on GitHub
 
-*.gitignore* – internal GitHub configuration file
+***.gitignore*** – internal GitHub configuration file
 
-*Analytics_Notebook.html* – The Project’s notebook fully generated and ready.
+***Analytics_Notebook.html*** – The Project’s notebook fully generated and ready.
 
-*Analytics_Notebook.Rmd* – The Project’s notebook R Markdown source version.
+***Analytics_Notebook.Rmd*** – The Project’s notebook R Markdown source code.
 
-*project.Rproj* – Rstudio Project file
+***project.Rproj*** – Rstudio Project file
 
-*README.md* - Short description for the first contact
+***README.md*** - Short description for the first contact
 
-*tests.R* – for testing new ideas and experimenting
+***tests.R*** – for testing new ideas and experimenting
 
-*dm_classic_db.csv* - what is in the database for classic dual momentum
+***dm_classic_db.csv*** - what is in the database for classic dual momentum
 
-*dm_10_etfs_db.csv* - database for the 10 ETFs case
+***dm_10_etfs_db.csv*** - database for the 10 ETFs case
 
-*dm_crypto_db.csv* - database content for crypto case
-
+***dm_crypto_db.csv*** - database content for crypto case
 
 **Files beneath are used for data mining (1 year momentum calculation)**
 
-*dm_classic_with_ema.R* – classic ETF set, absolute momt. using EMA(30), weekly and  monthly interval
+***dm_classic_with_ema.R*** – classic ETF set, absolute momt. using EMA(30), weekly and  monthly interval
 
-*dm_classic_with_zero.R* – classic ETF set, abs. momt. using 0, weekly and  monthly interval
+***dm_classic_with_zero.R*** – classic ETF set, abs. momt. using 0, weekly and  monthly interval
 
-*dm_etfs_with_ema.R* – 10 ETFs, abs. momt. using EMA(30), weekly and  monthly interval
+***dm_etfs_with_ema.R*** – 10 ETFs, abs. momt. using EMA(30), weekly and  monthly interval
 
-*dm_etfs_with_zero.R* – 10 ETFs, abs. momt. using 0, weekly and  monthly interval
+***dm_etfs_with_zero.R*** – 10 ETFs, abs. momt. using 0, weekly and  monthly interval
 
-*dm_crypto_with_ema.R* – basket of crypto, abs. momt. using EMA(30), weekly and  monthly interval
+***dm_crypto_with_ema.R*** – basket of crypto, abs. momt. using EMA(30), weekly and  monthly interval
 
-*dm_crypto_with_zero.R* – basket of crypto, abs. momt. using 0, weekly and monthly interval
+***dm_crypto_with_zero.R*** – basket of crypto, abs. momt. using 0, weekly and monthly interval

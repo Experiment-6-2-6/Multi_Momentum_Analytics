@@ -1,0 +1,702 @@
+---
+title: "Dual Momentum Analysis"
+author: "Kristoff Dudek"
+date: "2022-11-26"
+output:
+  prettydoc::html_pretty:
+    theme: cayman
+    highlight: github
+    toc: TRUE
+---
+
+*Este documento sirve como registro de mis métodos y flujo de trabajo analítico, así como una muestra de mis habilidades de análisis de datos para clientes potenciales y empleadores.*
+
+*Cabe señalar que la información proporcionada es únicamente con fines informativos y no constituye asesoramiento de inversión.*
+
+---
+
+Este documento está disponible en Inglés, Español, Polaco.
+
+---
+
+#Introducción
+
+En esta investigación, propongo una adaptación de la estrategia de inversión de Dual-Momentum según lo descrito por Gary Antonacci en su libro "Dual Momentum Investing: An Innovative Strategy for Higher Returns with Lower Risk" (16 dic. 2014 McGraw Hill). La estrategia también se explica en un corto video de YouTube del autor, que se puede encontrar [aquí](https://www.youtube.com/watch?v=lf1u4dsHavs).
+
+Mi objetivo es investigar el potencial de la modificación de la estrategia de Dual-Momentum para incluir activos criptográficos o acciones individuales pre-filtradas por varias ratios financieras como ROIC, crecimiento de EPS, crecimiento de BV, crecimiento de REV y Deuda. Con el fin de lograr esto, el análisis se realizará en varios módulos independientes pero exhaustivos.
+
+Además del objetivo principal, esta investigación también sirve como una demostración de mis habilidades analíticas para clientes potenciales y empleadores. Por lo tanto, el documento se ha diseñado para ser exhaustivo y de naturaleza tutorial.
+
+Para evaluar exhaustivamente las modificaciones propuestas a la estrategia de Dual-Momentum, se utiliza una base de datos externa. Aunque esto puede no ser estrictamente necesario para el análisis, el uso de una base de datos permite la demostración de mi habilidad en SQL y proporciona una fuente de datos exhaustiva para la posterior creación de presentaciones en Tableau y MS Power BI.
+
+Para aquellos interesados en la aplicación práctica de esta investigación, se ha creado un repositorio de el version control GitHub repositorio para alojar el proyecto. El repositorio, que se puede acceder [aquí](https://github.com/Experiment-6-2-6/Multi_Momentum_Analytics), contiene el código y los recursos necesarios para replicar el análisis.
+
+Acerca de los cuadernos Jupyter
+Para aquellos que no están familiarizados con los cuadernos Jupyter, este documento utiliza la versión de Google Colaboratory para R. Para navegar y utilizar efectivamente el cuaderno, es importante entender las características y funcionalidades básicas.
+
+Navegación en el cuaderno:
+
+Para acceder a la tabla de contenidos, haga clic en el icono de tres líneas ubicado en la esquina superior izquierda de la página, justo debajo del logo CO. [Flecha 4]
+
+Para ejecutar un bloque de código, coloque el cursor del mouse sobre la esquina superior izquierda de la celda de código. El campo aparecerá como dos corchetes juntos [&nbsp;&nbsp;&nbsp;]. Haga clic en el pequeño botón de reproducción que aparece para ejecutar el bloque. [Flecha 3]
+
+Para borrar la salida de un bloque de código después de que se haya ejecutado, coloque el cursor del mouse sobre el pequeño rectángulo similar a una puerta con la flecha apuntando hacia la derecha. Cambiará a un círculo oscuro con una x. Haga clic en él para eliminar la salida, manteniendo los datos almacenados en la memoria hasta el final de la sesión. [Flecha 11]
+
+Al final del análisis, se pueden descargar dos archivos csv que contienen los datos. Para acceder al directorio local del proyecto, haga clic en el pequeño icono similar a una carpeta ubicado en el menú de la izquierda. [Flecha 1]
+
+<img src = "https://runestone.academy/ns/books/published/httlads/_images/colab_UI_Left.JPG" width = 80%>
+
+Para aquellos que no estén muy familiarizados con Jupyter Notebooks y/o el lenguaje R, se recomienda ejecutar los bloques de código en secuencia hasta la marca "el final". Esto proporcionará una salida completa del análisis, incluyendo tablas, gráficos y archivos csv.
+
+Si surgen preguntas durante el análisis, no dude en ponerse en contacto a través de LinkedIn [aquí](https://www.linkedin.com/in/kristoffdudek/) o por correo electrónico [kriss.dudek@gmail.com](mailto:kriss.dudek@gmail.com).
+
+Ahora que la introducción está completa, profundicemos en el proyecto en cuestión.
+
+#  Las preguntas de investigación:
+
+1. ¿Cómo cambia el desempeño de la estrategia de Dual-Momentum al revisar el momento en una base semanal en lugar de mensual?
+1. ¿Qué impacto tiene este cambio en el volumen y los costos de comercio?
+1. ¿La estrategia es más efectiva cuando se aplica a un mayor número de ETFs?
+1. ¿Se puede minimizar la reducción al utilizar una EMA de 30 semanas como medida de momento absoluto?
+1. ¿Cómo se compara la estrategia con una canasta de ETFs optimizada para el rendimiento?
+1. ¿Cómo se desempeña la estrategia cuando se aplica a una canasta de acciones individuales pre-filtradas por ratios financieros?
+1. ¿Cómo se desempeña la estrategia cuando se aplica a activos criptográficos?
+1. ¿Cuál es el efecto de usar el momento mensual en lugar del momento anual?
+
+# Asunciones y objetivos
+
+* El objetivo de la investigación es probar las posibles mejoras de la estrategia de inversión Dual-Momentum de Gary Antonacci, así como su aplicabilidad a diferentes clases de activos como cripto y acciones individuales filtradas por métricas financieras específicas.
+
+* Los datos para el análisis se obtendrán de fuentes públicas y gratuitas y el análisis se realizará solo los fines de semana. Los datos utilizados en la investigación no serán mayores a 18 de abril de 2013, ya que fue en esa fecha cuando comenzó la negociación sin comisiones.
+
+* Para eliminar variables adicionales, todos los precios de ETFs, acciones y cripto estarán en USD.
+
+
+La investigación incluirá minería de datos para obtener una tabla de rendimientos semanales que incluya la estrategia Dual Momentum estándar, así como su aplicación a canastas de 10 ETF, 5 acciones y 20 activos de criptomonedas. Cada una de estas opciones se evaluará con reequilibrio mensual y semanal, y variantes con momento absoluto calculado usando tanto el signo positivo o negativo y la Media Móvil Exponencial de 30 semanas. Esto resulta en un total de 16 combinaciones, más una adicional para el rendimiento de una canasta optimizada de ETFs.
+
+Para lograr estos objetivos, se prepararán scripts de R para: Evaluación básica de Dual Momentum y uso de EMA (30) (módulo I), Valoración de desempeño de cartera (módulo II), Optimización de cartera (módulo III) y pantalla de acciones (módulo IV). El resumen del módulo I se presentará en forma de una tabla de líderes con ETFs ordenados por momento más fuerte. Además, se agregarán los cálculos de momentum semanal de los ETF a una hoja de cálculo de Google (para mi uso personal). La investigación se centrará en datos semanales, pero se mantendrán también datos diarios y cálculos en una base de datos para su uso en Tableau y Power BI.
+
+## Activos por Grupos utilizados en la investigación
+
+### Caso clásico de Dual-Momentum:
+
+1. **VOO** Vanguard S&P 500 ETF
+1. **VEO** Vanguard All-World ex-US ETF
+1. **BND** Vanguard Total Bond Market Index ETF
+
+### 10 ETFs de London Stock Exchange
+
+1. **VUAA**	Vanguard S&P 500 UCITS ETF USD (acc)
+1. **CNDX**	iShares NASDAQ 100 UCITS ETF USD (acc)
+1. **VWRA**	Vanguard FTSE All-World UCITS ETF USD (acc)
+1. **IWMO**	iShares Edge MSCI World Momentum Factor UCITS ETF USD (acc)
+1. **IWQU**	iShares Edge MSCI World Quality Factor UCITS ETF USD (acc)
+1. **IWVL**	IShares Edge MSCI World Value Factor UCITS ETF USD (acc)
+1. **WSML**	iShares MSCI World Small Cap UCITS ETF USD (acc)
+1. **VFEA**	Vanguard FTSE Emerging Mkts UCITS ETF USD (acc)
+1. **IGIL**	iShares Global Inflation Linked Govt Bonds UCITS ETF USD (acc)
+1. **IGLN**	iShares Physical Gold ETC USD (no income)
+
+### Crypts
+
+1. **AAVE** - AAVE Liquidity Protocol
+1. **ADA**  - Cardano Token
+1. **AGIX** -  SingularityNET Token
+1. **ATOM** - Cosmos Network Token
+1. **AVAX** - Avalanche
+1. **BNB** - Binance Coin
+1. **BTC** - Bitcoin
+1. **CAKE** - PancakeSwap Pancake Token
+1. ~~**CATGIRL** - CatGirl~~ eliminado 2023-01-15 cotizaciones de precios demasiado pequeñas. 
+1. **DOGE** - DogeCoin
+1. **DOT** - PolkaDot Token
+1. **ETH** - Ethereum
+1. **FIL** - FileCoin
+1. **LINK** - ChainLink Token
+1. **LTC** - LiteCoin
+1. **MANA** - Decentraland
+1. **MATIC** - Poligon Token
+1. **NEAR** - NEAR Protocol
+1. **PAXG** - PAX Gold
+1. **RNDR** - Render Token
+1. ~~**SHIB** - Shiba Inu~~ eliminado 2023-01-15 cotizaciones de precios demasiado pequeñas.
+1. **SUSHI** - SushiSwap Token
+1. **TON** - TON Coin (Telegram)
+1. **TRX** - TRON (BitTorrent)
+1. ~~**UNI** - UniSwap Unicorn Token~~ eliminado 2023-01-15 datos poco confiables.
+
+# Método y flujo de trabajo
+
+En el siguiente párrafo se explicará la versión final del código y flujo de trabajo de cada módulo. Con el fin de comprender completamente los problemas y las ideas abordadas en la investigación, se recomienda revisar primero el "Issue Register" que sirve como un índice cronológico de todos los problemas, temas, ideas y cambios en el proyecto.
+
+## Módulo Uno: Minería de datos
+
+En el Módulo Uno, se llevó a cabo la minería de datos utilizando un conjunto de 10 ETFs con una media móvil exponencial de 30 semanas.
+
+## Requisitos del entorno
+
+Se utilizaron los siguientes paquetes en este módulo:
+
+* Quantmod para análisis cuantitativo
+* Tidyverse para manipulación de datos general
+* Dplyr que es parte de Tidyverse pero necesita ser activado por separado
+* RPostgres para trabajar con bases de datos (no se usa RPostgreSQL ya que causa problemas con las conexiones SSL)
+* GT para crear una vista de tabla grande en el informe final
+* Reshape2 para transformar los datos en formato largo para simplificar el dibujo de la trama
+* Ggplot2 para trazar cómo conquistar el mundo en 3 sencillos pasos 🤣
+* Googlesheets4 para escribir en mi hoja de Google
+
+```{r, 'libraries', echo = TRUE, message = FALSE, warning = FALSE}
+library(quantmod)
+library(tidyverse)
+library(dplyr)
+library(RPostgres)
+library(gt)
+library(reshape2)
+library(ggplot2)
+library(googlesheets4)
+```
+
+### Obteniendo y limpiando datos
+
+* Estableciendo la conexión con mi base de datos
+* Obteniendo la lista de los nombres y símbolos de ETFs de la base de datos
+* Limitando la extracción de datos a los últimos 3 años
+* Poblando los marcos de datos diarios y semanales:
+  * obteniendo datos de Yahoo Finance
+  * extrayendo solo los cierres diarios ajustados
+  * nombrando las columnas con los nombres de ETFs
+  * eliminando cualquier fila con NA
+  * transformando los nombres de fila en columna de fecha (para usar en SQL)
+* Rewriting la base de datos ya que quiero tener 2 años de precios de cierre diarios en mi servidor para su uso posterior.
+
+```{r, 'Connection-On', echo = TRUE, message = FALSE, warning = FALSE}
+my_postgr <- dbConnect(
+  RPostgres::Postgres(),
+  host = Sys.getenv("sql_host"),
+  dbname = Sys.getenv("sql_db_name"),
+  user = Sys.getenv("sql_user"),
+  password = Sys.getenv("sql_password"),
+  port = 5432,
+  sslmode = "require"
+)
+```
+```{r, 'Getting-Data', echo = TRUE, message = FALSE, warning = FALSE}
+start_date <- Sys.Date() - (3 * 365)
+end_date <- Sys.Date()
+etf_qts_env <- new.env()
+etf_query <- dbGetQuery(my_postgr, "SELECT * FROM etf_info;")
+yahoo_symbols <- as.vector(etf_query[["ticker"]])
+
+# daily quotes
+getSymbols(yahoo_symbols, 
+           from = start_date, 
+           to = end_date, 
+           periodicity = "daily",
+           env = etf_qts_env)
+daily_closes <- do.call(merge, eapply(etf_qts_env, Ad))
+daily_closes <- na.omit(daily_closes)
+names(daily_closes) <- gsub(".L.Adjusted", "", names(daily_closes))
+
+# weekly quotes
+getSymbols(yahoo_symbols, 
+           from = start_date, 
+           to = end_date, 
+           periodicity = "weekly",
+           env = etf_qts_env)
+weekly_closes <- do.call(merge, eapply(etf_qts_env, Ad))
+weekly_closes <- na.omit(weekly_closes)
+names(weekly_closes) <- gsub(".L.Adjusted", "", names(weekly_closes))
+
+# monthly quotes
+getSymbols(yahoo_symbols, 
+           from = start_date, 
+           to = end_date, 
+           periodicity = "monthly",
+           env = etf_qts_env)
+monthly_closes <- do.call(merge, eapply(etf_qts_env, Ad))
+monthly_closes <- na.omit(monthly_closes)
+names(monthly_closes) <- gsub(".L.Adjusted", "", names(monthly_closes))
+```
+```{r, 'Quotes-to-DB', echo = TRUE, message = FALSE, warning = FALSE}
+# Have to transform into PostgreSQL format before sending to DB
+dc_for_sql <- as.data.frame(daily_closes)
+dc_for_sql <- cbind(date = as.Date(rownames(dc_for_sql)), dc_for_sql)
+if (dbExistsTable(my_postgr, "quotes_etfs_d")) {
+  dbRemoveTable(my_postgr, "quotes_etfs_d")
+}
+dbWriteTable(my_postgr, "quotes_etfs_d", dc_for_sql, row.names = FALSE)
+
+wc_for_sql <- as.data.frame(weekly_closes)
+wc_for_sql <- cbind(date = as.Date(rownames(wc_for_sql)), wc_for_sql)
+if (dbExistsTable(my_postgr, "quotes_etfs_w")){
+  dbRemoveTable(my_postgr, "quotes_etfs_w")
+}
+dbWriteTable(my_postgr, "quotes_etfs_w", wc_for_sql, row.names = FALSE)
+
+mc_for_sql <- as.data.frame(monthly_closes)
+mc_for_sql <- cbind(date = as.Date(rownames(mc_for_sql)), mc_for_sql)
+if (dbExistsTable(my_postgr, "quotes_etfs_m")){
+  dbRemoveTable(my_postgr, "quotes_etfs_m")
+}
+dbWriteTable(my_postgr, "quotes_etfs_m", mc_for_sql, row.names = FALSE)
+```
+
+### Explicaciones Adicionales
+
+Al trabajar con los datos, tomé la decisión de eliminar toda la tabla en lugar de solo actualizarla. Esto se debe a que mi lista de ETFs puede cambiar con el tiempo y la base de datos debe ser capaz de adaptarse a estos cambios de manera dinámica. Además, como solo estoy interesado en los últimos 3 años de datos, es más eficiente volver a escribir toda la base de datos desde cero.
+
+Para garantizar que el momento de los ETF esté en relación entre sí, elegí eliminar cualquier fila con valores faltantes (NA) en el dataframe. Esto significa que, aunque los períodos de comparación pueden ser más cortos o más largos en ocasiones, es importante que los períodos sean consistentes.
+
+Para garantizar la compatibilidad con la base de datos SQL, tuve que dividir las columnas XTS (eXtensive Time Series) en columnas separadas de fecha y flotantes.
+
+Al calcular la Tasa de Cambio (ROC), elegí usar el método de retorno aritmético simple. Esto se debe a que quiero que la ROC esté entre -100% y +100%, en lugar de entre -∞ y +∞. Es importante tener en cuenta que en la función ROC() del paquete Quantmod, "discreta" se refiere al método de retorno aritmético (simple), mientras que "continua" se refiere al método logarítmico (geométrico).
+
+### Cálculos
+
+* Verificar si el precio del activo está por encima del EMA (30)
+* Calcular el ROC anual de 1 año
+* Enviar los resultados a la base de datos.
+
+```{r, 'Absolute-Mmt', echo = TRUE, message = FALSE, warning = FALSE}
+# weekly check
+abs_mmt_state_w <- rep(TRUE, ncol(weekly_closes))
+names(abs_mmt_state_w) <- names(weekly_closes)
+for (ticker in names(weekly_closes)){
+  ema30w <- EMA(weekly_closes[,ticker], n = 30)
+  if (ema30w[nrow(ema30w)] < weekly_closes[nrow(weekly_closes),ticker]) {
+    abs_mmt_state_w[[ticker]] <- TRUE
+  } else {
+    abs_mmt_state_w[[ticker]] <- FALSE
+  }
+}
+# monthly check
+abs_mmt_state_m <- rep(TRUE, ncol(monthly_closes))
+names(abs_mmt_state_m) <- names(monthly_closes)
+for (ticker in names(monthly_closes)){
+  ema7m <- EMA(monthly_closes[,ticker], n = 7)
+  if (ema7m[nrow(ema7m)] < monthly_closes[nrow(monthly_closes),ticker]) {
+    abs_mmt_state_m[[ticker]] <- TRUE
+  } else {
+      abs_mmt_state_m[[ticker]] <- FALSE
+    }
+}
+```
+```{r, 'Relative-Mmt', echo = TRUE, message = FALSE, warning = FALSE}
+daily_1ym <- ROC(daily_closes, n = 252, type = "discrete") %>%  na.omit()
+weekly_1ym <- ROC(weekly_closes, n = 50, type = "discrete") %>% na.omit()
+monthly_1ym <- ROC(monthly_closes, n = 12, type = "discrete") %>% na.omit()
+```
+```{r, 'Momentum-to-DB', echo = TRUE, message = FALSE, warning = FALSE}
+dm_for_sql <- as.data.frame(daily_1ym)
+dm_for_sql <- cbind(date = as.Date(rownames(dm_for_sql)), dm_for_sql)
+if (dbExistsTable(my_postgr, "momentum_etfs_d")) {
+  dbRemoveTable(my_postgr, "momentum_etfs_d")
+}
+dbWriteTable(my_postgr, "momentum_etfs_d", dm_for_sql, row.names = FALSE)
+
+wm_for_sql <- as.data.frame(weekly_1ym)
+wm_for_sql <- cbind(date = as.Date(rownames(wm_for_sql)), wm_for_sql)
+if (dbExistsTable(my_postgr, "momentum_etfs_w")) {
+  dbRemoveTable(my_postgr, "momentum_etfs_w")
+}
+dbWriteTable(my_postgr, "momentum_etfs_w", wm_for_sql, row.names = FALSE)
+
+mm_for_sql <- as.data.frame(monthly_1ym)
+mm_for_sql <- cbind(date = as.Date(rownames(mm_for_sql)), mm_for_sql)
+if (dbExistsTable(my_postgr, "momentum_etfs_m")) {
+  dbRemoveTable(my_postgr, "momentum_etfs_m")
+}
+dbWriteTable(my_postgr, "momentum_etfs_m", mm_for_sql, row.names = FALSE)
+```
+```{r, 'Connection-Off', echo = TRUE, message = FALSE, warning = FALSE}
+dbDisconnect(my_postgr)
+```
+
+### Tabla y Gráfico (Informe)
+
+Ahora es el momento de construir el informe.
+Como ya he enviado todos los datos necesarios a la base de datos, puedo cerrar la conexión y centrarse en los marcos de datos locales.
+
+Quiero que el informe sea en forma de tabla y gráfico. Para eso hago:
+
+* Ordenación de las columnas por el momento de la última semana en orden descendente.
+* Preparación del líderboard:
+  * Construcción de la tabla a partir de los componentes
+  * Transposición de la tabla de momento a vista vertical
+  * Formateo y añadido de nombres de columnas
+  * Impresión de la tabla
+* Preparación del gráfico del momento del último año
+  * Transformación de los datos seleccionados en formato largo
+  * Construcción del gráfico
+  * Dibujo.
+  
+```{r, 'Table', echo = TRUE, message = FALSE, warning = FALSE}
+# preparing the weekly table
+temp_df_w <- as_tibble(weekly_1ym)
+temp_df_w <- temp_df_w[,order(temp_df_w[nrow(temp_df_w),],decreasing = TRUE)]
+temp_df_w <- tail(temp_df_w, 1) %>% "*"(100) %>% round(2)
+
+descriptions <- NULL
+for (ticker in names(temp_df_w)) {
+  description <- etf_query$name[etf_query$ticker_usd == ticker]
+  descriptions <- append(descriptions, description)
+}
+
+Above_ema_w <- rep(TRUE, ncol(temp_df_w))
+names(Above_ema_w) <- names((temp_df_w))
+for (ticker in names(temp_df_w)){
+  Above_ema_w[ticker] <- abs_mmt_state_w[ticker]
+}
+
+leaderboard_data_w <- tibble(descriptions,
+                             names(temp_df_w),
+                             Above_ema_w,
+                             t(temp_df_w))
+
+names(leaderboard_data_w) <- c("etf_name",
+                               "USD", "Above_EMA", "Y_Mm")
+
+leaderboard_table_w <-  
+  gt(leaderboard_data_w) %>% 
+  tab_header(title = md("**ETFs Sorted By 1 Year Momentum**"), 
+             subtitle = "last 2 years of data (weekly)") %>% 
+  tab_source_note(md("_datasource: www.yahoo.com_")) %>% 
+  tab_style(style = list(cell_text(color = "#196F3D")),
+            locations = cells_body(columns = Above_EMA, 
+                                   rows = Above_EMA == TRUE)) %>% 
+  tab_style(style = list(cell_text(color = "#7B241C")),
+            locations = cells_body(columns = Above_EMA, 
+                                   rows = Above_EMA == FALSE)) %>% 
+  tab_style(style = list(cell_fill(color = "#E8F8F5"),
+                         cell_text(weight =  "bold")),
+            locations = cells_body(rows = 1)) %>% 
+  tab_style(style = cell_text(align = "right"),
+            locations = cells_source_notes()) %>%
+  cols_label(etf_name = "ETF Full Name / Description", 
+             USD = "Ticker",
+             Above_EMA = "Above EMA", 
+             Y_Mm = "1Y Mm %")
+
+# preparing the monthly table
+temp_df_m <- as_tibble(monthly_1ym)
+temp_df_m <- temp_df_m[,order(temp_df_m[nrow(temp_df_m),],decreasing = TRUE)]
+temp_df_m <- tail(temp_df_m, 1) %>% "*"(100) %>% round(2)
+
+descriptions <- NULL
+for (ticker in names(temp_df_m)) {
+  description <- etf_query$name[etf_query$ticker_usd == ticker]
+  descriptions <- append(descriptions, description)
+}
+
+Above_ema_m <- rep(TRUE, ncol(temp_df_m))
+names(Above_ema_m) <- names((temp_df_m))
+for (ticker in names(temp_df_m)){
+  Above_ema_m[ticker] <- abs_mmt_state_m[ticker]
+}
+
+leaderboard_data_m <- tibble(descriptions,
+                           names(temp_df_m),
+                           Above_ema_m,
+                           t(temp_df_m))
+
+names(leaderboard_data_m) <- c("etf_name",
+                             "USD", "Above_EMA", "Y_Mm")
+
+leaderboard_table_m <-  
+  gt(leaderboard_data_m) %>% 
+  tab_header(title = md("**ETFs Sorted By 1 Year Momentum**"), 
+             subtitle = "last 2 years of data (monthly)") %>% 
+  tab_source_note(md("_datasource: www.yahoo.com_")) %>% 
+  tab_style(style = list(cell_text(color = "#196F3D")),
+    locations = cells_body(columns = Above_EMA, rows = Above_EMA == TRUE)) %>% 
+  tab_style(style = list(cell_text(color = "#7B241C")),
+    locations = cells_body(columns = Above_EMA, rows = Above_EMA == FALSE)) %>% 
+  tab_style(style = list(cell_fill(color = "#E8F8F5"),
+                         cell_text(weight =  "bold")),
+    locations = cells_body(rows = 1)) %>% 
+  tab_style(style = cell_text(align = "right"),
+    locations = cells_source_notes()) %>%
+  cols_label(etf_name = "ETF Full Name / Description", 
+             USD = "Ticker",
+             Above_EMA = "Above EMA", 
+             Y_Mm = "1Y Mm %")
+
+leaderboard_table_w
+leaderboard_table_m
+```
+```{r, 'Plot', echo = TRUE, warning = FALSE, out.width= '100%', fig.asp = '1.618', dpi = 96}
+# momentum plot weekly
+temp_df_w <- select(wm_for_sql, -date)
+temp_df_w <- temp_df_w[,order(temp_df_w[nrow(temp_df_w),],decreasing = TRUE)]
+temp_df_w <- select(temp_df_w, 1:3) %>% "*"(100) %>% round(2)
+temp_df_w <- tibble(date = wm_for_sql$date, temp_df_w)
+temp_df_w <- tail(temp_df_w, 100)
+plot_data_w <- melt(temp_df_w, id = "date")
+
+best_3_plot_w <- ggplot(plot_data_w, 
+                        aes(x = date, y = value, colour = variable)) +
+  geom_line() +
+  geom_hline(yintercept = 0) + 
+  labs(title = "ETFs by the best 1 Year Momentum",
+       subtitle = "last 2 years of data (weekly)",
+       caption = "datasource: www.yahoo.com",
+       x = NULL,
+       y = "Momentum %",
+       colour = "ETF") + 
+  theme_minimal() +
+  theme(plot.title = element_text(colour = "#3498DB", face = "bold"), 
+        plot.subtitle = element_text(colour = "#555555", face = "bold"), 
+        plot.caption = element_text(face = "italic"), 
+        aspect.ratio = 9/16)
+
+# momentum plot monthly
+temp_df_m <- select(mm_for_sql, -date)
+temp_df_m <- temp_df_m[,order(temp_df_m[nrow(temp_df_m),],decreasing = TRUE)]
+temp_df_m <- select(temp_df_m, 1:3) %>% "*"(100) %>% round(2)
+temp_df_m <- tibble(date = mm_for_sql$date, temp_df_m)
+temp_df_m <- tail(temp_df_m, 24)
+plot_data_m <- melt(temp_df_m, id = "date")
+
+best_3_plot_m <- ggplot(plot_data_m, 
+                        aes(x = date, y = value, colour = variable)) +
+  geom_line() +
+  geom_hline(yintercept = 0) + 
+  labs(title = "ETFs by the best 1 Year Momentum",
+       subtitle = "last 2 years of data (monthly)",
+       caption = "datasource: www.yahoo.com",
+       x = NULL,
+       y = "Momentum %",
+       colour = "ETF") + 
+  theme_minimal() +
+  theme(plot.title = element_text(colour = "#3498DB", face = "bold"), 
+        plot.subtitle = element_text(colour = "#555555", face = "bold"), 
+        plot.caption = element_text(face = "italic"), 
+        aspect.ratio = 9/16)
+
+best_3_plot_w
+best_3_plot_m
+```
+
+### Exportación de archivo CSV.
+
+Con el fin de facilitar la exploración y manipulación de datos, he implementado la capacidad de exportar los datos en formato csv. Esto hace que sea sencillo para los interesados acceder a los datos y realizar su propio análisis con herramientas como Excel. Además, permite una fácil integración con otras fuentes de datos para un examen más a fondo.
+
+```{r, 'CSV-Export', echo = TRUE, eval = FALSE}
+write.csv(leaderboard_data_w, "dm_10_etfs_weekly.csv")
+write.csv(leaderboard_data_m, "dm_10_etfs_monthly.csv")
+write.csv(temp_df_w, "dm_10_etfs_2_years_of_mmt_data_weekly.csv")
+write.csv(temp_df_m, "dm_10_etfs_2_years_of_mmt_data_monthly.csv")
+```
+
+### Agregar salida a la hoja de cálculo de Google.
+
+Por mi comodidad y accesibilidad, he exportado los dataframes a una hoja de cálculo de Google. Esto puede ser accedido haciendo clic [aquí](https://docs.google.com/spreadsheets/d/1ULTKECt44zBzhROLlXMx3XtD-Vm0M5kQ2Ve63AtzJ64/edit?usp=sharing). La hoja de cálculo incluye una tabla resumen y una hoja oculta, que se utiliza para crear un gráfico en una hoja separada y visible. Es importante tener en cuenta que, aunque esta función está incluida por conveniencia, no es necesario ejecutar este fragmento específico de código para el análisis.
+
+```{r, 'Google-Export', echo = TRUE, eval = FALSE}
+gs4_auth()
+my_gsheets <- gs4_get(Sys.getenv("file_id"))
+
+df_to_write <- leaderboard_data_w
+range_write(
+  my_gsheets,
+  df_to_write,
+  sheet = 1,
+  range = "one_year_momentum!A2:Z11",
+  col_names = FALSE,
+  reformat = TRUE
+)
+
+df_to_write <- wc_for_sql
+range_write(
+  my_gsheets,
+  df_to_write,
+  sheet = "chart_data",
+  range = NULL,
+  col_names = TRUE,
+  reformat = TRUE
+)
+```
+
+# Información adicional
+
+## Issue Register
+
+Como analista de datos y gerente de proyecto, entiendo la importancia de llevar un registro de los problemas que surgen durante el proceso de investigación. Por esta razón, he creado un "Registro de problemas" que sirve como un registro de cualquier problema, idea, cambio y otra información relevante que ocurra a lo largo del proyecto.
+
+Cabe destacar que este registro es solo para mi uso y no es mi práctica estándar compartirlo con los interesados ya que no es parte de ningún informe oficial. Sirve como herramienta para que yo puedo llevar un seguimiento del progreso y abordar cualquier problema que pueda surgir. Además, el registro no incluye fechas específicas, ya que agregué las entradas a medida que ocurren. Se puede considerar una combinación de un registro de problemas y un registro de proyecto.
+
+Tenga en cuenta que este registro está principalmente destinado a mi uso personal y por lo tanto el lenguaje utilizado puede ser más directo y conciso (y dejo esta parte en ingles). En caso de duda, por favor haga preguntas por correo electrónico.
+
+---
+
+1. To keep my DB credentials secure, I will need to find a way to hide them and prevent committing them to the public by accident.
+2. There are significant differences in how Google Colab and RStudio execute code. To account for this, I will need to create separate versions of the code for each platform.
+
+**Solved**
+
+To maintain version control, I will only use RStudio in conjunction with GitHub. 
+To show the DB capabilities of the code I will share it with with all credentials on Google Colab but only with trusted individuals.
+
+---
+
+3. There are going to be too many source files to keep them in Colab.
+
+**Solved**
+
+After consideration, I think that there is no real need to keep them in Colab. I am going to put a link to my GitHub repository for those who are interested.
+
+---
+
+4. Is it really necessary to let readers interact with my data host?
+
+**Solved**
+
+No. But without that the code will lose a lot of its demonstrative power (to show my skills) and I don't think that the customers will abuse the database. Anyway I can always disable the connection. Risks to benefits in costs of keeping the feature.
+
+---
+
+5. After finishing the code I can easily gather data for all 16 cases of Double-Momentum use. Now I can focus on the next step but which one?
+
+**Solved**
+
+I think that creating a code for portfolio optimization will be easies from the remaining tasks and it allows me to get the last (17th) set of data for comparison. So the next step will be module III.
+
+---
+
+6. New Year's Day.
+
+**Solved**
+
+Issue solved but I need a day of rest. (Current timestamp 2023-01-01 00:47:22 UTC) 😃🥂
+
+---
+
+7. There is a problem connecting to the DB. It works in Google Colad but fails in RStudio. It demands the use of SSL but when I put “sslmode = ‘require’” it crashes the environment in RStudio.
+
+**Solved**
+
+Switched from RPostgreSQL to RPostgres library. It allows SSL without any problem.
+
+---
+
+8. I transformed the momentum calculation from scientific format too early. I need them only for data presentation (the last step) but in the DB it should be stored with big precision.
+
+**Solved [2023-01-10]**
+
+Code in all files corrected.
+
+---
+
+9. I should have put the dates in this issue register. Without them I have lost a lot of explanatory power in this notebook. I missed the point that I am not the only stakeholder of this project anymore (readers are too).
+
+**Solved**
+
+From now on I am going to put opening and closing dates in here.
+
+---
+
+**2023-01-03**
+
+10. I forgot to save the calculation results for absolute momentum. I am going to need them in Module II for backtesting.
+
+2023-01-12
+I think I need to do this in a different file. I have already put a lot into the "Module I" and I don't want to put all the work (and code) into one file. It can unnecessarily complicate future maintenance.
+
+**Solved [2023-01-14]**
+
+Decision. I am going to keep data mining together so I will build datatables for methods comparison. It will probably be something like: Asset name, Date, Quotation, Absolute Momentum (T/F), Momentum levels for comparison. (Long format)
+
+---
+
+
+**2023-01-03**
+
+11. I need to include CSV files with my database dump for those who don't want to use databases... or maybe I should only just describe a table structure for the code to work?
+
+**Solved [2023-01-11]**
+
+Files already on GitHub. File list updated.
+
+---
+
+**2023-01-05**
+
+12. There are many too many code files. I need to rewrite them in the way that one file will generate data using monthly and weekly intervals in one go.
+
+**Solved [2023-01-11]**
+
+I have rewritten the code and reduced the files by the half. File list in this document has been updated too.
+
+---
+
+**2023-01-15**
+
+13. In the files for crypto the momentum calculations for UNI-USD are absurdly high. It looks like there is some bug in data but I need to take a closer took, just in case.
+
+**Solved [2023-01-15]**
+
+I have discovered that there are 3 tokens which have problems with quotation. I have already more than 20 cryptos on the list so I am going to remove the "trouble makers". Reason: I don't want to loose a tone of time in a search of reliable data source and 22 crypyos are enough for me.
+
+---
+
+**2023-01-15**
+
+14. What a blunder! I have just discovered that I have one misaligned column in my leader's table. I have sorted all assets by the momentum but I had forgotten to re-order  the absolute momentum calculations to match the rest. Oof!
+
+**Solved [2023-01-15]**
+
+All code files corrected.
+
+---
+
+**2023-02-01**
+15. the "last()" function has stopped working. I have no idea why.
+
+**Solved [2023-02-10]**
+It was probable conflict between the quantmode and tidyverse after the recent updates.
+I have changed all codes from last(x) to x[nrow(x)]
+
+---
+
+**2023-02-11**
+16. I need to translate current part to Spanish and Polish.
+
+**Solved [2023-02-11]**
+Translation to Spanish done!
+
+---
+
+## Archivos del proyecto en GitHub
+
+***.gitignore*** - archivo de configuración interna de GitHub
+
+***Analytics_Notebook.html*** - El cuaderno del proyecto, generado completamente y listo.
+
+***Analytics_Notebook.Rmd*** - El código fuente del cuaderno R Markdown del proyecto.
+
+***project.Rproj*** - Archivo del proyecto de Rstudio
+
+***README.md*** - Descripción corta para el primer contacto
+
+***tests.R*** - para probar nuevas ideas y experimentar
+
+***dm_classic_db.csv*** - lo que hay en la base de datos para el momento clásico dual
+
+***dm_10_etfs_db.csv*** - base de datos para el caso de 10 ETFs
+
+***dm_crypto_db.csv*** - contenido de la base de datos para el caso de criptomonedas
+
+**Los archivos debajo se utilizan para la minería de datos (cálculo de momento de 1 año)**
+
+***dm_classic_with_ema.R*** - conjunto clásico de ETF, momt. absoluto usando EMA (30), intervalos semanal y mensual
+
+***dm_classic_with_zero.R*** - conjunto clásico de ETF, momt. absoluto usando 0, intervalos semanal y mensual
+
+***dm_etfs_with_ema.R*** - 10 ETFs, momt. absoluto usando EMA (30), intervalos semanal y mensual
+
+***dm_etfs_with_zero.R*** - 10 ETFs, momt. absoluto usando 0, intervalos semanal y mensual
+
+***dm_crypto_with_ema.R*** - canasta de criptomonedas, momt. absoluto usando EMA (30), intervalos semanal y mensual
+
+***dm_crypto_with_zero.R*** - canasta de criptomonedas, momt. absoluto usando 0, intervalos semanal y mensual

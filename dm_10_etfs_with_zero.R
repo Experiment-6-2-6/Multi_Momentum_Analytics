@@ -100,7 +100,7 @@ monthly_1ym <- ROC(monthly_closes, n = 12, type = "discrete") %>% na.omit()
 abs_mmt_state_w <- rep(TRUE, ncol(weekly_closes))
 names(abs_mmt_state_w) <- names(weekly_closes)
 for (ticker in names(weekly_closes)){
-  if (last(weekly_1ym) > 0) {
+  if (weekly_1ym[nrow(weekly_1ym)] > 0) {
     abs_mmt_state_w[[ticker]] <- TRUE
   } else {
     abs_mmt_state_w[[ticker]] <- FALSE
@@ -111,7 +111,7 @@ for (ticker in names(weekly_closes)){
 abs_mmt_state_m <- rep(TRUE, ncol(monthly_closes))
 names(abs_mmt_state_m) <- names(monthly_closes)
 for (ticker in names(monthly_closes)){
-  if (last(monthly_1ym) > 0) {
+  if (monthly_1ym[nrow(monthly_1ym)] > 0) {
     abs_mmt_state_m[[ticker]] <- TRUE
   } else {
     abs_mmt_state_m[[ticker]] <- FALSE
